@@ -1,4 +1,4 @@
-saptapper
+Saptapper
 =========
 
-Automated GSF ripper
+My rewrite of Caitsith2's automated GSF ripper tool.
