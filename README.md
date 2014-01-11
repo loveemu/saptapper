@@ -1,0 +1,4 @@
+saptapper
+=========
+
+Automated GSF ripper
