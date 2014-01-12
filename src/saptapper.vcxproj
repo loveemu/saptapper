@@ -83,9 +83,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BytePattern.cpp" />
     <ClCompile Include="saptapper.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BytePattern.h" />
+    <ClInclude Include="cbyteio.h" />
+    <ClInclude Include="cpath.h" />
     <ClInclude Include="saptapper.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -5,7 +5,7 @@ CXX = g++
 CXXFLAGS = -O2 -Wall
 LDFLAGS = -lm -lz
 TARGET = saptapper
-SRCS = $(TARGET).cpp
+SRCS = $(TARGET).cpp BytePattern.cpp
 OBJS := $(SRCS:.cpp=.o)
 
 .PHONY: all clean

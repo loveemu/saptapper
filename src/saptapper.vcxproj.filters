@@ -18,9 +18,21 @@
     <ClCompile Include="saptapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BytePattern.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="saptapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BytePattern.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cbyteio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

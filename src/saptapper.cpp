@@ -14,6 +14,9 @@
 #include "zlib.h"
 
 #include "saptapper.h"
+#include "BytePattern.h"
+#include "cbyteio.h"
+#include "cpath.h"
 
 #ifdef _WIN32
 #include <sys/stat.h>
@@ -65,23 +68,6 @@ const uint8_t Saptapper::SAPPYBLOCK[248] =
 	0xD5, 0x80, 0x03, 0x08, 0x89, 0x7A, 0x03, 0x08, 0x10, 0xFF, 0x2F, 0xE1, 0x11, 0xFF, 0x2F, 0xE1, 
 	0xFC, 0x7F, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00, 
 };
-
-bool Saptapper::isdir(const char *path)
-{
-	struct stat st;
-	if (stat(path, &st) == 0)
-	{
-		if ((st.st_mode & S_IFDIR) != 0)
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	return false;
-}
 
 int Saptapper::isduplicate(int num)
 {
@@ -150,16 +136,16 @@ int Saptapper::doexe2gsf(unsigned long offset, int size, unsigned short num, con
 	entrypoint = offset & 0xFF000000;
 	load_offset = offset;
 	rom_size = size;
-	memcpy(uncompbuf, &entrypoint, sizeof(entrypoint)); // TODO: endianness
-	memcpy(uncompbuf + 4, &load_offset, sizeof(load_offset)); // TODO: endianness
-	memcpy(uncompbuf + 8, &rom_size, sizeof(rom_size)); // TODO: endianness
+	mput4l(entrypoint, &uncompbuf[0]);
+	mput4l(load_offset, &uncompbuf[4]);
+	mput4l(rom_size, &uncompbuf[8]);
 	if (size == 1)
 	{
-		memcpy(uncompbuf + 12, &byte, sizeof(byte)); // TODO: endianness
+		mput1(byte, &uncompbuf[12]);
 	}
 	else
 	{
-		memcpy(uncompbuf + 12, &half, sizeof(half)); // TODO: endianness
+		mput2l(half, &uncompbuf[12]);
 	}
 
 	//  fprintf(stdout,"uncompressed: %ld bytes\n",ucl);fflush(stdout);
@@ -186,19 +172,10 @@ int Saptapper::doexe2gsf(unsigned long offset, int size, unsigned short num, con
 	fputc('S', f);
 	fputc('F', f);
 	fputc(0x22, f);
-	fputc(0, f);
-	fputc(0, f);
-	fputc(0, f);
-	fputc(0, f);
-	fputc(cl >> 0, f);
-	fputc(cl >> 8, f);
-	fputc(cl >> 16, f);
-	fputc(cl >> 24, f);
+	fput4l(0, f);
+	fput4l(cl, f);
 	ccrc = crc32(crc32(0L, Z_NULL, 0), compbuf, cl);
-	fputc(ccrc >> 0, f);
-	fputc(ccrc >> 8, f);
-	fputc(ccrc >>16, f);
-	fputc(ccrc >>24, f);
+	fput4l(ccrc, f);
 	fwrite(compbuf, 1, cl, f);
 	//fwrite(base, 1, sizeof(base), f);
 	fprintf(f, "%s", base);
@@ -251,9 +228,9 @@ Saptapper::EGsfLibResult Saptapper::dogsflib(const char *from, const char *to)
 
 	entrypoint = load_offset = 0x8000000;
 	rom_size = ucl;
-	memcpy(uncompbuf, &entrypoint, sizeof(entrypoint)); // TODO: endianness
-	memcpy(uncompbuf+4, &load_offset, sizeof(load_offset)); // TODO: endianness
-	memcpy(uncompbuf+8, &rom_size, sizeof(rom_size)); // TODO: endianness
+	mput4l(entrypoint, &uncompbuf[0]);
+	mput4l(load_offset, &uncompbuf[4]);
+	mput4l(rom_size, &uncompbuf[8]);
 
 	char stroffset[256];
 
@@ -293,7 +270,7 @@ selectcontinue:
 	}
 	if (diff < 8)
 	{
-		sappyoffset = rom[i + 40] + (rom[i + 41] << 8) + (rom[i + 42] << 16) + ((rom[i + 43] & 0x01) << 24);
+		sappyoffset = gba_address_to_offset(mget4l(&rom[i + 40]));
 		unsigned long sappyoffset2;
 		sappyoffset2 = sappyoffset;
 		while ((rom[sappyoffset2 + 3] & 0x0E) == 0x08)
@@ -306,9 +283,7 @@ selectcontinue:
 			k = i + 1;
 			goto selectcontinue;
 		}
-		sappyblock[0xD8] = (i & 0xFF) + 1;
-		sappyblock[0xD9] = (i >> 8) & 0xFF;
-		sappyblock[0xDA] = (i >> 16) & 0xFF;
+		mput3l(i + 1, &sappyblock[0xD8]);
 	}
 	else
 	{
@@ -358,9 +333,7 @@ selectcontinue:
 			return GSFLIB_NOMAIN;
 		}
 	}
-	sappyblock[0xDC] = (i & 0xFF) + 1;
-	sappyblock[0xDD] = (i >> 8) & 0xFF;
-	sappyblock[0xDE] = (i >> 16) & 0xFF;
+	mput3l(i + 1, &sappyblock[0xDC]);
 	j = 0;
 	rompointer = i - 0x100;
 	for (i--; i > rompointer; i--)
@@ -423,9 +396,7 @@ selectcontinue:
 			return GSFLIB_NOINIT;
 		}
 	}
-	sappyblock[0xE0] = (i & 0xFF) + 1;
-	sappyblock[0xE1] = (i >> 8) & 0xFF;
-	sappyblock[0xE2] = (i >> 16) & 0xFF;
+	mput3l(i + 1, &sappyblock[0xE0]);
 	j = 0;
 	//i += 0x1800;
 	rompointer = i - 0x800;
@@ -475,9 +446,7 @@ selectcontinue:
 	{
 		i -= 5;
 	}
-	sappyblock[0xE4] = (i & 0xFF) + 1;
-	sappyblock[0xE5] = (i >> 8) & 0xFF;
-	sappyblock[0xE6] = (i >> 16) & 0xFF;
+	mput3l(i + 1, &sappyblock[0xE4]);
 
 	rompointer = 0xFF;
 lookforspace:
@@ -510,9 +479,7 @@ lookforspace:
 		memcpy(rom + i, sappyblock, sizeof(sappyblock));
 		i >>= 2;
 		i -= 2;
-		rom[0] = (i & 0xFF);
-		rom[1] = (i >> 8) & 0xFF;
-		rom[2] = (i >> 16) & 0xFF;
+		mput3l(i, &rom[0]);
 	}
 	else
 	{
@@ -576,19 +543,10 @@ lookforspace:
 	fputc('S', f);
 	fputc('F', f);
 	fputc(0x22, f);
-	fputc(0, f);
-	fputc(0, f);
-	fputc(0, f);
-	fputc(0, f);
-	fputc(cl >> 0,f);
-	fputc(cl >> 8,f);
-	fputc(cl >> 16,f);
-	fputc(cl >> 24,f);
+	fput4l(0, f);
+	fput4l(cl, f);
 	ccrc = crc32(crc32(0L, Z_NULL, 0), compbuf, cl);
-	fputc(ccrc >> 0,f);
-	fputc(ccrc >> 8,f);
-	fputc(ccrc >> 16,f);
-	fputc(ccrc >> 24,f);
+	fput4l(ccrc, f);
 	fwrite(compbuf, 1, cl, f);
 	fclose(f);
 	fprintf(stderr, "ok\n");
