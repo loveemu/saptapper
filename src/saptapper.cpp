@@ -10,8 +10,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
+#include <stdint.h>
 #include "zlib.h"
+
+#ifdef _WIN32
+#include <sys/stat.h>
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#define _chdir(s)	chdir((s))
+#define _mkdir(s)	mkdir((s), 0777)
+#endif
 
 Byte   compbuf[0x2000000];
 Byte uncompbuf[0x2000000];
@@ -59,14 +70,14 @@ unsigned char sappyblock[248] =
 
 
 
-uLong minigsfoffset;
-uLong minigsfcount;
+uint32_t minigsfoffset;
+uint32_t minigsfcount;
 
-uLong entrypoint;
-uLong load_offset;
-uLong rom_size;
+uint32_t entrypoint;
+uint32_t load_offset;
+uint32_t rom_size;
 
-uLong sappyoffset;
+uint32_t sappyoffset;
 int manual=0;
 
 FILE *bat=NULL;
@@ -75,8 +86,22 @@ FILE *bat=NULL;
 
 
 
-
-
+bool isdir(const char *path)
+{
+	struct stat st;
+	if (stat(path, &st) == 0)
+	{
+		if ((st.st_mode & S_IFDIR) != 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return false;
+}
 
 unsigned char hexdigit(unsigned char digit)
 {
@@ -142,13 +167,13 @@ int isduplicate(int num)
 
 int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to, const char *base) {
   FILE *f;
-  uLong ucl;
-  uLong cl;
-  uLong ccrc;
+  uint32_t ucl;
+  uint32_t cl;
+  uint32_t ccrc;
 
   unsigned char byte=num&0xFF;
   unsigned short half=num&0xFFFF;
-
+  uLong zul;
 
 
   int r;
@@ -176,7 +201,9 @@ int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to
 //  fprintf(stdout,"uncompressed: %ld bytes\n",ucl);fflush(stdout);
 
   cl = sizeof(compbuf);
-  r=compress2(compbuf,&cl,uncompbuf,ucl+12,9);
+  zul = cl;
+  r=compress2(compbuf,&zul,uncompbuf,ucl+12,9);
+  cl = zul;
   if(r!=Z_OK){fprintf(stderr,"zlib compress2() failed (%d)\n", r);return 1;}
 
 //  fprintf(stdout,"compressed: %ld bytes\n",cl);fflush(stdout);
@@ -219,14 +246,14 @@ int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to
 
 int dogsflib(const char *from, const char *to) {
   FILE *f;
-  uLong ucl;
-  uLong cl;
-  uLong ccrc;
+  uint32_t ucl;
+  uint32_t cl;
+  uint32_t ccrc;
   int r;
   Byte *rom = uncompbuf+12;
   int i,j,k,rompointer;
-  unsigned long fileattr;
   int result;
+  uLong zul;
 
   char s[1000];
 
@@ -243,7 +270,7 @@ int dogsflib(const char *from, const char *to) {
   fprintf(stderr, "%s: ", to);
 
   f=fopen(from,"rb");if(!f){perror(from);return GSFLIB_INFILE_E;}
-  ucl=(uLong)fread(uncompbuf+12,1,sizeof(uncompbuf)-12,f);
+  ucl=(uint32_t)fread(uncompbuf+12,1,sizeof(uncompbuf)-12,f);
   fclose(f);
   
   entrypoint = load_offset = 0x8000000;
@@ -483,25 +510,23 @@ lookforspace:
 	  }
   }
 
+	_mkdir(s);
 
-
-
-	CreateDirectoryA(s,NULL);
-
-	fileattr = GetFileAttributesA(s);
-	if ((!(fileattr&FILE_ATTRIBUTE_DIRECTORY))||(fileattr==-1))
+	if (!isdir(s))
 	{
 		printf("Directory %s could not be created\n",s);
 		return -1;
 	}
 
-	SetCurrentDirectoryA(s);
+	_chdir(s);
 
   
 //  fprintf(stdout,"uncompressed: %ld bytes\n",ucl);fflush(stdout);
 
   cl = sizeof(compbuf);
-  r=compress2(compbuf,&cl,uncompbuf,ucl+12,1);
+  zul = cl;
+  r=compress2(compbuf,&zul,uncompbuf,ucl+12,1);
+  cl = zul;
   if(r!=Z_OK){/*fprintf(stderr,"zlib compress2() failed (%d)\n", r);*/return GSFLIB_ZLIB_ERR;}
 
 
@@ -554,7 +579,6 @@ int main(int argc, char **argv) {
   char gsflibname[1000];
   char minigsfname[1000];
   char nickname[64];
-  unsigned long fileattr;
   int i, j, k;
   int errors = 0;
 //  int count;
@@ -587,12 +611,11 @@ int main(int argc, char **argv) {
 
   for (j=1; j<argc; j++)
   {
-    fileattr = GetFileAttributesA(argv[j]);
-    if (((fileattr&FILE_ATTRIBUTE_DIRECTORY))||(fileattr==-1))
-	{
+    //if (((fileattr&FILE_ATTRIBUTE_DIRECTORY))||(fileattr==-1))
+	//{
 	//	printf("Directory %s could not be created\n",s);
-		continue;
-	}
+	//	continue;
+	//}
 	k = (int)(strchr(argv[j], '.') - argv[j]); 
 	memset(gsflibname,0,sizeof(gsflibname));
 	strncpy(gsflibname, argv[j], k);
@@ -609,7 +632,7 @@ int main(int argc, char **argv) {
 		case GSFLIB_OTFILE_E:
 		case GSFLIB_ROM_WR:
 		case GSFLIB_ZLIB_ERR:
-			SetCurrentDirectoryA("..");
+			_chdir("..");
 		default:
 			break;
 		}
@@ -682,7 +705,7 @@ int main(int argc, char **argv) {
 
 	}
 
-	SetCurrentDirectoryA("..");
+	_chdir("..");
 	fprintf(stderr,"\n");
 
   }
