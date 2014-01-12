@@ -29,6 +29,24 @@
 #define _mkdir(s)	mkdir((s), 0777)
 #endif
 
+// example:
+// PUSH    {LR}
+// LSLS    R0, R0, #0x10
+// LDR     R2, =dword_827CCD8
+// LDR     R1, =dword_827CD38 ; song table offset (sappyoffset)
+// LSRS    R0, R0, #0xD
+// ADDS    R0, R0, R1
+// LDRH    R3, [R0,#4]
+// LSLS    R1, R3, #1
+// ADDS    R1, R1, R3
+// LSLS    R1, R1, #2
+// ADDS    R1, R1, R2
+// LDR     R2, [R1]
+// LDR     R1, [R0]
+// MOVS    R0, R2
+// BL      sub_80D9A64
+// POP     {R0}
+// BX      R0
 const uint8_t Saptapper::selectsong[0x1E] = {
 	0x00, 0xB5, 0x00, 0x04, 0x07, 0x4A, 0x08, 0x49, 
 	0x40, 0x0B, 0x40, 0x18, 0x83, 0x88, 0x59, 0x00, 
@@ -36,15 +54,30 @@ const uint8_t Saptapper::selectsong[0x1E] = {
 	0x01, 0x68, 0x10, 0x1C, 0x00, 0xF0,
 };
 
+// example:
+// PUSH    {R4-R6,LR}
+// LDR     R0, =0x80D874D
+// MOVS    R1, #2
 const uint8_t Saptapper::init[2][INIT_COUNT] = { 
 	{0x70, 0xB5},
 	{0xF0, 0xB5}
 };
 
+// example:
+// PUSH    {LR}
+// BL      sub_80D86C8
+// POP     {R0}
+// BX      R0
 const uint8_t Saptapper::soundmain[2] = {
 	0x00, 0xB5,
 };
 
+// note that following pattern omits the first 5 bytes:
+// LDR     R0, =dword_3007FF0
+// LDR     R0, [R0]
+// LDR     R2, =0x68736D53
+// LDR     R3, [R0]
+// SUBS    R3, R3, R2
 const uint8_t Saptapper::vsync[5] = {
 	0x4A, 0x03, 0x68, 0x9B, 0x1A,
 };
@@ -69,10 +102,9 @@ const uint8_t Saptapper::SAPPYBLOCK[248] =
 	0xFC, 0x7F, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00, 
 };
 
-int Saptapper::isduplicate(int num)
+int Saptapper::isduplicate(uint8_t *rom, uint32_t sappyoffset, int num)
 {
 	int i, j;
-	uint8_t *rom = uncompbuf + 12;
 	unsigned char data[8];
 
 	for (i = 0; i < 8; i++)
@@ -290,6 +322,7 @@ selectcontinue:
 		// fprintf(stderr, "Unable to Locate sappy_selectsongbynum\n");
 		return GSFLIB_NOSELECT;
 	}
+	// search prior function
 	j = 0;
 	rompointer = i - 0x20;
 	for (i--; i > rompointer; i--)
@@ -334,6 +367,7 @@ selectcontinue:
 		}
 	}
 	mput3l(i + 1, &sappyblock[0xDC]);
+	// search prior function, again
 	j = 0;
 	rompointer = i - 0x100;
 	for (i--; i > rompointer; i--)
@@ -399,6 +433,7 @@ selectcontinue:
 	mput3l(i + 1, &sappyblock[0xE0]);
 	j = 0;
 	//i += 0x1800;
+	// and so on...
 	rompointer = i - 0x800;
 	for (i--; (i > 0 && i > rompointer); i--)
 	{
@@ -710,7 +745,7 @@ int Saptapper::main(int argc, char **argv)
 
 
 			//  strcat(s, ".gsf");
-			if (isduplicate(i) == 0)
+			if (isduplicate(&uncompbuf[12], sappyoffset, i) == 0)
 			{
 				errors += doexe2gsf(minigsfoffset, size, i, s, t);
 			}

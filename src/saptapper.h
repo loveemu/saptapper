@@ -66,12 +66,13 @@ public:
 		delete[] uncompbuf;
 	}
 
-	int isduplicate(int num);
 	int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to, const char *base);
 	EGsfLibResult dogsflib(const char *from, const char *to);
 	int main(int argc, char **argv);
 
 private:
+	int isduplicate(uint8_t *rom, uint32_t sappyoffset, int num);
+
 	inline bool is_gba_rom_address(uint32_t address)
 	{
 		uint8_t region = (address >> 24) & 0xFE;
