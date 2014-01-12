@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include "zlib.h"
 
+#include "saptapper.h"
+
 #ifdef _WIN32
 #include <sys/stat.h>
 #include <direct.h>
@@ -24,31 +26,27 @@
 #define _mkdir(s)	mkdir((s), 0777)
 #endif
 
-uint8_t   compbuf[0x2000000];
-uint8_t uncompbuf[0x2000000];
-
-uint8_t selectsong[0x1E] = {
+const uint8_t Saptapper::selectsong[0x1E] = {
 	0x00, 0xB5, 0x00, 0x04, 0x07, 0x4A, 0x08, 0x49, 
 	0x40, 0x0B, 0x40, 0x18, 0x83, 0x88, 0x59, 0x00, 
 	0xC9, 0x18, 0x89, 0x00, 0x89, 0x18, 0x0A, 0x68, 
 	0x01, 0x68, 0x10, 0x1C, 0x00, 0xF0,
 };
 
-#define INIT_COUNT 2
-uint8_t init[2][INIT_COUNT] = { 
+const uint8_t Saptapper::init[2][INIT_COUNT] = { 
 	{0x70, 0xB5},
 	{0xF0, 0xB5}
 };
 
-uint8_t soundmain[2] = {
+const uint8_t Saptapper::soundmain[2] = {
 	0x00, 0xB5,
 };
 
-uint8_t vsync[5] = {
+const uint8_t Saptapper::vsync[5] = {
 	0x4A, 0x03, 0x68, 0x9B, 0x1A,
 };
 
-unsigned char sappyblock[248] =
+const uint8_t Saptapper::SAPPYBLOCK[248] =
 {
 	0x00, 0x80, 0x2D, 0xE9, 0x01, 0x00, 0xBD, 0xE8, 0x50, 0x10, 0xA0, 0xE3, 0x00, 0x20, 0x90, 0xE5, 
 	0x04, 0x00, 0x80, 0xE2, 0x04, 0x10, 0x41, 0xE2, 0x00, 0x00, 0x51, 0xE3, 0xFA, 0xFF, 0xFF, 0x1A, 
@@ -68,25 +66,7 @@ unsigned char sappyblock[248] =
 	0xFC, 0x7F, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00, 
 };
 
-
-
-uint32_t minigsfoffset;
-uint32_t minigsfcount;
-
-uint32_t entrypoint;
-uint32_t load_offset;
-uint32_t rom_size;
-
-uint32_t sappyoffset;
-int manual = 0;
-
-FILE *bat = NULL;
-
-
-
-
-
-bool isdir(const char *path)
+bool Saptapper::isdir(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == 0)
@@ -103,7 +83,7 @@ bool isdir(const char *path)
 	return false;
 }
 
-int isduplicate(int num)
+int Saptapper::isduplicate(int num)
 {
 	int i, j;
 	uint8_t *rom = uncompbuf + 12;
@@ -143,7 +123,7 @@ int isduplicate(int num)
 }
 
 
-int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to, const char *base)
+int Saptapper::doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to, const char *base)
 {
 	FILE *f;
 	uint32_t ucl;
@@ -184,7 +164,7 @@ int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to
 
 	//  fprintf(stdout,"uncompressed: %ld bytes\n",ucl);fflush(stdout);
 
-	cl = sizeof(compbuf);
+	cl = MAX_GBA_ROM_SIZE;
 	zul = cl;
 	r = compress2(compbuf, &zul, uncompbuf, ucl + 12, 9);
 	cl = zul;
@@ -229,21 +209,7 @@ int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to
 }
 
 
-
-#define	GSFLIB_OK		0
-#define GSFLIB_NOMAIN	1
-#define GSFLIB_NOSELECT 2
-#define GSFLIB_NOINIT   3
-#define GSFLIB_NOVSYNC  4
-#define GSFLIB_NOSPACE  5
-#define GSFLIB_ZLIB_ERR 6
-#define GSFLIB_INFILE_E 7
-#define GSFLIB_ROM_WR   8
-#define GSFLIB_OTFILE_E 9
-#define GSFLIB_DIR_ERR  10
-
-
-int dogsflib(const char *from, const char *to)
+Saptapper::EGsfLibResult Saptapper::dogsflib(const char *from, const char *to)
 {
 	FILE *f;
 	uint32_t ucl;
@@ -257,10 +223,14 @@ int dogsflib(const char *from, const char *to)
 
 	char s[1000];
 
+	unsigned char sappyblock[248];
+
 	for (i = 0; i < 1000; i++)
 	{
 		s[i] = 0;
 	}
+
+	memcpy(sappyblock, Saptapper::SAPPYBLOCK, sizeof(sappyblock));
 
 	i = (int)(strchr(from, '.') - from); 
 	strncpy(s, from, i);
@@ -276,7 +246,7 @@ int dogsflib(const char *from, const char *to)
 		perror(from);
 		return GSFLIB_INFILE_E;
 	}
-	ucl = (uint32_t)fread(uncompbuf + 12, 1, sizeof(uncompbuf) - 12, f);
+	ucl = (uint32_t)fread(uncompbuf + 12, 1, MAX_GBA_ROM_SIZE - 12, f);
 	fclose(f);
 
 	entrypoint = load_offset = 0x8000000;
@@ -563,7 +533,7 @@ lookforspace:
 	if (!isdir(s))
 	{
 		printf("Directory %s could not be created\n", s);
-		return -1;
+		return GSFLIB_DIR_ERR;
 	}
 
 	_chdir(s);
@@ -572,7 +542,7 @@ lookforspace:
 	//  fprintf(stdout, "uncompressed: %ld bytes\n", ucl);
 	//fflush(stdout);
 
-	cl = sizeof(compbuf);
+	cl = MAX_GBA_ROM_SIZE;
 	zul = cl;
 	r = compress2(compbuf, &zul, uncompbuf, ucl + 12, 1);
 	cl = zul;
@@ -638,7 +608,7 @@ lookforspace:
 
 
 
-int main (int argc, char **argv)
+int Saptapper::main(int argc, char **argv)
 {
 	char s[1000];
 	char t[1000];
@@ -648,7 +618,7 @@ int main (int argc, char **argv)
 	int i, j, k;
 	int errors = 0;
 	//  int count;
-	int dogsf = 0;
+	EGsfLibResult dogsf = GSFLIB_OK;
 	FILE *log = NULL;
 	//  unsigned long offset;
 	int size;
@@ -802,4 +772,10 @@ int main (int argc, char **argv)
 		log = NULL;
 	}
 	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	Saptapper app;
+	return app.main(argc, argv);
 }
