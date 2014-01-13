@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <string>
+#include <sstream>
+#include <map>
+
 #include "zlib.h"
 
 #include "saptapper.h"
@@ -19,6 +23,8 @@
 #include "cpath.h"
 
 #ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
 #include <sys/stat.h>
 #include <direct.h>
 #else
@@ -102,6 +108,152 @@ const uint8_t Saptapper::SAPPYBLOCK[248] =
 	0xFC, 0x7F, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00, 
 };
 
+void Saptapper::put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size)
+{
+	mput4l(entrypoint, &exe[0]);
+	mput4l(load_offset, &exe[4]);
+	mput4l(rom_size, &exe[8]);
+}
+
+bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_size)
+{
+	std::map<std::string, std::string> tags;
+	return exe2gsf(gsf_path, exe, exe_size, tags);
+}
+
+#define CHUNK 16384
+bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_size, std::map<std::string, std::string>& tags)
+{
+	FILE *gsf_file = NULL;
+
+	z_stream z;
+	uint8_t zbuf[CHUNK];
+	uLong zcrc;
+	uLong zlen;
+	int zflush;
+	int zret;
+
+	// check exe size
+	if (exe_size > MAX_GSF_EXE_SIZE)
+	{
+		return false;
+	}
+
+	// open output file
+	gsf_file = fopen(gsf_path.c_str(), "wb");
+	if (gsf_file == NULL)
+	{
+		return false;
+	}
+
+	// write PSF header
+	// (EXE length and CRC will be set later)
+	fwrite(PSF_SIGNATURE, strlen(PSF_SIGNATURE), 1, gsf_file);
+	fputc(GSF_PSF_VERSION, gsf_file);
+	fput4l(0, gsf_file);
+	fput4l(0, gsf_file);
+	fput4l(0, gsf_file);
+
+	// init compression
+	z.zalloc = Z_NULL;
+	z.zfree = Z_NULL;
+	z.opaque = Z_NULL;
+	if (deflateInit(&z, Z_DEFAULT_COMPRESSION) != Z_OK)
+	{
+		return false;
+	}
+
+	// compress exe
+	z.next_in = exe;
+	z.avail_in = exe_size;
+	z.next_out = zbuf;
+	z.avail_out = CHUNK;
+	zflush = Z_FINISH;
+	zcrc = crc32(0L, Z_NULL, 0);
+	do
+	{
+		// compress
+		zret = deflate(&z, zflush);
+		if (zret != Z_STREAM_END && zret != Z_OK)
+		{
+			deflateEnd(&z);
+			fclose(gsf_file);
+			return false;
+		}
+
+		// write compressed data
+		zlen = CHUNK - z.avail_out;
+		if (zlen != 0)
+		{
+			if (fwrite(zbuf, zlen, 1, gsf_file) != 1)
+			{
+				deflateEnd(&z);
+				fclose(gsf_file);
+				return false;
+			}
+			zcrc = crc32(zcrc, zbuf, zlen);
+		}
+
+		// give space for next chunk
+		z.next_out = zbuf;
+		z.avail_out = CHUNK;
+	} while (zret != Z_STREAM_END);
+
+	// set EXE info to PSF header
+	fseek(gsf_file, 8, SEEK_SET);
+	fput4l(z.total_out, gsf_file);
+	fput4l(zcrc, gsf_file);
+	fseek(gsf_file, 0, SEEK_END);
+
+	// end compression
+	deflateEnd(&z);
+
+	// write tags
+	if (!tags.empty())
+	{
+		fwrite(PSF_TAG_SIGNATURE, strlen(PSF_TAG_SIGNATURE), 1, gsf_file);
+
+		for (std::map<std::string, std::string>::iterator it = tags.begin(); it != tags.end(); ++it)
+		{
+			const std::string& key = it->first;
+			const std::string& value = it->second;
+			std::istringstream value_reader(value);
+			std::string line;
+
+			// process for each lines
+			while (std::getline(value_reader, line))
+			{
+				if (fprintf(gsf_file, "%s=%s\n", key.c_str(), line.c_str()) < 0)
+				{
+					fclose(gsf_file);
+					return false;
+				}
+			}
+		}
+	}
+
+	fclose(gsf_file);
+	return true;
+}
+
+bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t offset, size_t size, uint32_t num, std::map<std::string, std::string>& tags)
+{
+	uint8_t exe[GSF_EXE_HEADER_SIZE + 4];
+
+	// limit size
+	if (size > 4)
+	{
+		return false;
+	}
+
+	// make exe
+	put_gsf_exe_header(exe, 0x08000000, offset, size);
+	mput4l(num, &exe[GSF_EXE_HEADER_SIZE]);
+
+	// write minigsf file
+	return exe2gsf(gsf_path, exe, GSF_EXE_HEADER_SIZE + size, tags);
+}
+
 int Saptapper::isduplicate(uint8_t *rom, uint32_t sappyoffset, int num)
 {
 	int i, j;
@@ -141,94 +293,17 @@ int Saptapper::isduplicate(uint8_t *rom, uint32_t sappyoffset, int num)
 }
 
 
-int Saptapper::doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to, const char *base)
-{
-	FILE *f;
-	uint32_t ucl;
-	uint32_t cl;
-	uint32_t ccrc;
-
-	uint8_t byte = num & 0xFF;
-	uint16_t half = num & 0xFFFF;
-
-	uLong zul;
-
-
-	int r;
-
-
-
-
-	//  fprintf(stderr, "%s->%s: ", from, to);
-
-	ucl = size;
-
-
-
-	entrypoint = offset & 0xFF000000;
-	load_offset = offset;
-	rom_size = size;
-	mput4l(entrypoint, &uncompbuf[0]);
-	mput4l(load_offset, &uncompbuf[4]);
-	mput4l(rom_size, &uncompbuf[8]);
-	if (size == 1)
-	{
-		mput1(byte, &uncompbuf[12]);
-	}
-	else
-	{
-		mput2l(half, &uncompbuf[12]);
-	}
-
-	//  fprintf(stdout,"uncompressed: %ld bytes\n",ucl);fflush(stdout);
-
-	cl = MAX_GBA_ROM_SIZE;
-	zul = cl;
-	r = compress2(compbuf, &zul, uncompbuf, ucl + 12, 9);
-	cl = zul;
-	if (r != Z_OK)
-	{
-		fprintf(stderr, "zlib compress2() failed (%d)\n", r);
-		return 1;
-	}
-
-	//  fprintf(stdout, "compressed: %ld bytes\n", cl);
-	//  fflush(stdout);
-
-	f = fopen(to,"wb");
-	if (!f) {
-		perror(to);
-		return 1;
-	}
-	fputc('P', f);
-	fputc('S', f);
-	fputc('F', f);
-	fputc(0x22, f);
-	fput4l(0, f);
-	fput4l(cl, f);
-	ccrc = crc32(crc32(0L, Z_NULL, 0), compbuf, cl);
-	fput4l(ccrc, f);
-	fwrite(compbuf, 1, cl, f);
-	//fwrite(base, 1, sizeof(base), f);
-	fprintf(f, "%s", base);
-
-	fclose(f);
-	fprintf(stderr, ".");
-	return 0;
-}
-
-
 Saptapper::EGsfLibResult Saptapper::dogsflib(const char *from, const char *to)
 {
 	FILE *f;
 	uint32_t ucl;
-	uint32_t cl;
-	uint32_t ccrc;
-	int r;
+	//uint32_t cl;
+	//uint32_t ccrc;
+	//int r;
 	uint8_t *rom = uncompbuf+12;
 	int i, j, k, rompointer;
 	int result;
-	uLong zul;
+	//uLong zul;
 
 	char s[1000];
 
@@ -544,6 +619,12 @@ lookforspace:
 	//  fprintf(stdout, "uncompressed: %ld bytes\n", ucl);
 	//fflush(stdout);
 
+	if (!exe2gsf(to, uncompbuf, GSF_EXE_HEADER_SIZE + ucl))
+	{
+		return GSFLIB_OTFILE_E;
+	}
+
+#if 0
 	cl = MAX_GBA_ROM_SIZE;
 	zul = cl;
 	r = compress2(compbuf, &zul, uncompbuf, ucl + 12, 1);
@@ -574,6 +655,7 @@ lookforspace:
 	// fprintf(stderr, "Writing normal rom file\n");
 	return GSFLIB_ROM_WR;
 #endif
+//GSFLIB_OTFILE_E
 	fputc('P', f);
 	fputc('S', f);
 	fputc('F', f);
@@ -584,6 +666,8 @@ lookforspace:
 	fput4l(ccrc, f);
 	fwrite(compbuf, 1, cl, f);
 	fclose(f);
+#endif
+
 	fprintf(stderr, "ok\n");
 
 	if (bat)
@@ -603,8 +687,8 @@ lookforspace:
 
 int Saptapper::main(int argc, char **argv)
 {
+	std::map<std::string, std::string> tags;
 	char s[1000];
-	char t[1000];
 	char gsflibname[1000];
 	char minigsfname[1000];
 	char nickname[64];
@@ -708,6 +792,7 @@ int Saptapper::main(int argc, char **argv)
 			size = 1;
 		}
 
+		tags["_lib"] = gsflibname;
 		if (manual == 2)
 		{
 			printf("Enter your name for GSFby purposes.\n");
@@ -716,17 +801,17 @@ int Saptapper::main(int argc, char **argv)
 			gets(nickname);
 			if(!strcmp(nickname, "CaitSith2"))
 			{
-				sprintf(t, "[TAG]_lib=%s\ngsfby=CaitSith2\n", gsflibname);
+				tags["gsfby"] = "Caitsith2";
 			}
 			else
 			{
-				sprintf(t, "[TAG]_lib=%s\ngsfby=Saptapper, with help of %s\n", gsflibname, nickname);
+				tags["gsfby"]= std::string("Saptapper, with help of ") + nickname;
 			}
 			manual = 1;
 		}
 		else
 		{
-			sprintf(t, "[TAG]_lib=%s\ngsfby=Saptapper\n", gsflibname);
+			tags["gsfby"] = "Saptapper";
 		}
 		for (i = 0; i < minigsfcount; i++)
 		{
@@ -747,7 +832,7 @@ int Saptapper::main(int argc, char **argv)
 			//  strcat(s, ".gsf");
 			if (isduplicate(&uncompbuf[12], sappyoffset, i) == 0)
 			{
-				errors += doexe2gsf(minigsfoffset, size, i, s, t);
+				errors += make_minigsf(s, minigsfoffset, size, i, tags) ? 0 : 1;
 			}
 			else
 			{

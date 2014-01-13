@@ -3,13 +3,21 @@
 #define SAPTAPPER_H_INCLUDED
 
 #include <stdint.h>
+#include <string>
+#include <map>
 
 #include "BytePattern.h"
 
-#define INIT_COUNT 2
+#define INIT_COUNT	2
 
-#define GSF_ROM_HEADER_SIZE	12
+#define PSF_SIGNATURE	"PSF"
+#define PSF_TAG_SIGNATURE	"[TAG]"
+
+#define GSF_PSF_VERSION	0x22
+#define GSF_EXE_HEADER_SIZE	12
+
 #define MAX_GBA_ROM_SIZE	0x2000000
+#define MAX_GSF_EXE_SIZE	(MAX_GBA_ROM_SIZE + GSF_EXE_HEADER_SIZE)
 
 class Saptapper
 {
@@ -56,8 +64,8 @@ public:
 		manual(0),
 		bat(NULL)
 	{
-		compbuf = new uint8_t[GSF_ROM_HEADER_SIZE + MAX_GBA_ROM_SIZE];
-		uncompbuf = new uint8_t[GSF_ROM_HEADER_SIZE + MAX_GBA_ROM_SIZE];
+		compbuf = new uint8_t[MAX_GSF_EXE_SIZE];
+		uncompbuf = new uint8_t[MAX_GSF_EXE_SIZE];
 	}
 
 	~Saptapper()
@@ -66,7 +74,11 @@ public:
 		delete[] uncompbuf;
 	}
 
-	int doexe2gsf(unsigned long offset, int size, unsigned short num, const char *to, const char *base);
+	static void put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size);
+	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size);
+	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size, std::map<std::string, std::string>& tags);
+	static bool make_minigsf(const std::string& gsf_path, uint32_t offset, size_t size, uint32_t num, std::map<std::string, std::string>& tags);
+
 	EGsfLibResult dogsflib(const char *from, const char *to);
 	int main(int argc, char **argv);
 
