@@ -154,6 +154,16 @@ static INLINE bool path_isdir(const char *path)
 	return false;
 }
 
+static off_t path_getfilesize(const char *path)
+{
+	struct stat st;
+	if (stat(path, &st) == 0)
+	{
+		return st.st_size;
+	}
+	return -1;
+}
+
 static char *path_getabspath(const char *path, char *absolute_path)
 {
 #ifdef _WIN32

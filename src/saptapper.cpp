@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-13]"
+#define APP_VER		"[2014-01-12]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 #include <string>
 #include <sstream>
 #include <map>
@@ -41,78 +42,30 @@
 #define _rmdir(s)	rmdir((s))
 #endif
 
-// example:
-// PUSH    {LR}
-// LSLS    R0, R0, #0x10
-// LDR     R2, =dword_827CCD8
-// LDR     R1, =dword_827CD38 ; song table offset (sappyoffset)
-// LSRS    R0, R0, #0xD
-// ADDS    R0, R0, R1
-// LDRH    R3, [R0,#4]
-// LSLS    R1, R3, #1
-// ADDS    R1, R1, R3
-// LSLS    R1, R1, #2
-// ADDS    R1, R1, R2
-// LDR     R2, [R1]
-// LDR     R1, [R0]
-// MOVS    R0, R2
-// BL      sub_80D9A64
-// POP     {R0}
-// BX      R0
-const uint8_t Saptapper::selectsong[0x1E] = {
-	0x00, 0xB5, 0x00, 0x04, 0x07, 0x4A, 0x08, 0x49, 
-	0x40, 0x0B, 0x40, 0x18, 0x83, 0x88, 0x59, 0x00, 
-	0xC9, 0x18, 0x89, 0x00, 0x89, 0x18, 0x0A, 0x68, 
-	0x01, 0x68, 0x10, 0x1C, 0x00, 0xF0,
-};
-
-// example:
-// PUSH    {R4-R6,LR}
-// LDR     R0, =0x80D874D
-// MOVS    R1, #2
-const uint8_t Saptapper::init[2][INIT_COUNT] = { 
-	{0x70, 0xB5},
-	{0xF0, 0xB5}
-};
-
-// example:
-// PUSH    {LR}
-// BL      sub_80D86C8
-// POP     {R0}
-// BX      R0
-const uint8_t Saptapper::soundmain[2] = {
-	0x00, 0xB5,
-};
-
-// note that following pattern omits the first 5 bytes:
-// LDR     R0, =dword_3007FF0
-// LDR     R0, [R0]
-// LDR     R2, =0x68736D53
-// LDR     R3, [R0]
-// SUBS    R3, R3, R2
-const uint8_t Saptapper::vsync[5] = {
-	0x4A, 0x03, 0x68, 0x9B, 0x1A,
-};
-
-const uint8_t Saptapper::SAPPYBLOCK[248] =
+unsigned int memcmploose(const void *buf1, const void *buf2, size_t n, unsigned int maxdiff)
 {
-	0x00, 0x80, 0x2D, 0xE9, 0x01, 0x00, 0xBD, 0xE8, 0x50, 0x10, 0xA0, 0xE3, 0x00, 0x20, 0x90, 0xE5, 
-	0x04, 0x00, 0x80, 0xE2, 0x04, 0x10, 0x41, 0xE2, 0x00, 0x00, 0x51, 0xE3, 0xFA, 0xFF, 0xFF, 0x1A, 
-	0x0B, 0x00, 0x00, 0xEA, 0x53, 0x61, 0x70, 0x70, 0x79, 0x20, 0x44, 0x72, 0x69, 0x76, 0x65, 0x72, 
-	0x20, 0x52, 0x69, 0x70, 0x70, 0x65, 0x72, 0x20, 0x62, 0x79, 0x20, 0x43, 0x61, 0x69, 0x74, 0x53, 
-	0x69, 0x74, 0x68, 0x32, 0x5C, 0x5A, 0x6F, 0x6F, 0x70, 0x64, 0x2C, 0x20, 0x28, 0x63, 0x29, 0x20, 
-	0x32, 0x30, 0x30, 0x34, 0x00, 0x40, 0x2D, 0xE9, 0x80, 0x00, 0x9F, 0xE5, 0x21, 0x00, 0x00, 0xEB, 
-	0x88, 0x00, 0x9F, 0xE5, 0x00, 0x80, 0x2D, 0xE9, 0x02, 0x00, 0xBD, 0xE8, 0x30, 0x10, 0x81, 0xE2, 
-	0x00, 0x10, 0x80, 0xE5, 0x01, 0x03, 0xA0, 0xE3, 0x08, 0x10, 0xA0, 0xE3, 0x04, 0x10, 0x80, 0xE5, 
-	0x01, 0x10, 0xA0, 0xE3, 0x00, 0x12, 0x80, 0xE5, 0x08, 0x12, 0x80, 0xE5, 0x60, 0x00, 0x9F, 0xE5, 
-	0x40, 0x10, 0x9F, 0xE5, 0x14, 0x00, 0x00, 0xEB, 0x00, 0x00, 0x02, 0xEF, 0xFD, 0xFF, 0xFF, 0xEA, 
-	0x00, 0x40, 0x2D, 0xE9, 0x38, 0x00, 0x9F, 0xE5, 0x0E, 0x00, 0x00, 0xEB, 0x28, 0x00, 0x9F, 0xE5, 
-	0x0C, 0x00, 0x00, 0xEB, 0x01, 0x03, 0xA0, 0xE3, 0x01, 0x18, 0xA0, 0xE3, 0x01, 0x10, 0x81, 0xE2, 
-	0x00, 0x12, 0x80, 0xE5, 0x24, 0x00, 0x9F, 0xE5, 0x04, 0x10, 0x00, 0xE5, 0x01, 0x00, 0xBD, 0xE8, 
-	0x10, 0xFF, 0x2F, 0xE1, 0xFF, 0xFF, 0xFF, 0xFF, 0x59, 0x81, 0x03, 0x08, 0x4D, 0x81, 0x03, 0x08, 
-	0xD5, 0x80, 0x03, 0x08, 0x89, 0x7A, 0x03, 0x08, 0x10, 0xFF, 0x2F, 0xE1, 0x11, 0xFF, 0x2F, 0xE1, 
-	0xFC, 0x7F, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00, 
-};
+	size_t i;
+	int diff = 0;
+
+	if (maxdiff == 0)
+	{
+		return 0;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		if (((uint8_t*)buf1)[i] != ((uint8_t*)buf2)[i])
+		{
+			diff++;
+
+			if (diff == maxdiff)
+			{
+				break;
+			}
+		}
+	}
+	return diff;
+}
 
 void Saptapper::put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size)
 {
@@ -242,7 +195,7 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 	return true;
 }
 
-bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t offset, size_t size, uint32_t num, std::map<std::string, std::string>& tags)
+bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t address, size_t size, uint32_t num, std::map<std::string, std::string>& tags)
 {
 	uint8_t exe[GSF_EXE_HEADER_SIZE + 4];
 
@@ -253,49 +206,11 @@ bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t offset, size_
 	}
 
 	// make exe
-	put_gsf_exe_header(exe, 0x08000000, offset, size);
+	put_gsf_exe_header(exe, GBA_ENTRYPOINT, address, size);
 	mput4l(num, &exe[GSF_EXE_HEADER_SIZE]);
 
 	// write minigsf file
 	return exe2gsf(gsf_path, exe, GSF_EXE_HEADER_SIZE + size, tags);
-}
-
-int Saptapper::isduplicate(uint8_t *rom, uint32_t sappyoffset, int num)
-{
-	int i, j;
-	unsigned char data[8];
-
-	for (i = 0; i < 8; i++)
-	{
-		data[i] = rom[sappyoffset + (num * 8) + i];
-	}
-
-	if (num == 0)
-	{
-		return 0;
-	}
-	else
-	{
-		for (i = 0; i < num; i++)
-		{
-			for (j = 0; j < 8; j++)
-			{
-				if (data[j] != rom[sappyoffset + (i * 8) + j])
-				{
-					break;
-				}
-			}
-			if (j == 8)
-			{
-				break;
-			}
-		}
-		if (i != num)
-		{
-			return 1;
-		}
-	}
-	return 0;
 }
 
 const char* Saptapper::get_gsflib_error(EGsfLibResult gsflibstat)
@@ -334,334 +249,628 @@ const char* Saptapper::get_gsflib_error(EGsfLibResult gsflibstat)
 	}
 }
 
-Saptapper::EGsfLibResult Saptapper::dogsflib(const char *from, const char *to)
+bool Saptapper::load_rom(uint8_t* rom, size_t rom_size)
 {
-	FILE *f;
-	uint32_t ucl;
-	//uint32_t cl;
-	//uint32_t ccrc;
-	//int r;
-	uint8_t *rom = uncompbuf+12;
-	int i, j, k, rompointer;
-	int result;
-	//uLong zul;
+	close_rom();
 
-	char s[1000];
-
-	unsigned char sappyblock[248];
-
-	for (i = 0; i < 1000; i++)
+	// check length
+	if (rom_size > MAX_GBA_ROM_SIZE)
 	{
-		s[i] = 0;
+		return false;
 	}
 
-	memcpy(sappyblock, Saptapper::SAPPYBLOCK, sizeof(sappyblock));
+	// allocate memory
+	this->rom_exe = new uint8_t[GSF_EXE_HEADER_SIZE + rom_size];
+	this->rom = &rom_exe[GSF_EXE_HEADER_SIZE];
+	this->rom_size = rom_size;
 
-	i = (int)(strchr(from, '.') - from); 
-	strncpy(s, from, i);
+	// read ROM
+	memcpy(this->rom, rom, rom_size);
 
+	return true;
+}
 
+bool Saptapper::load_rom_file(const std::string& rom_path)
+{
+	close_rom();
 
-
-	minigsfcount = 0;
-	//fprintf(stderr, "%s: ", to);
-
-	f = fopen(from,"rb");
-	if (!f) {
-		perror(from);
-		return GSFLIB_INFILE_E;
-	}
-	ucl = (uint32_t)fread(uncompbuf + 12, 1, MAX_GBA_ROM_SIZE - 12, f);
-	fclose(f);
-
-	entrypoint = load_offset = 0x8000000;
-	rom_size = ucl;
-	mput4l(entrypoint, &uncompbuf[0]);
-	mput4l(load_offset, &uncompbuf[4]);
-	mput4l(rom_size, &uncompbuf[8]);
-
-	char stroffset[256];
-
-	int diff = 0;
-	j = 0;
-	k = 0;
-selectcontinue:
-	for (i = k; i < rom_size; i++)
+	// check length
+	off_t rom_size_off = path_getfilesize(rom_path.c_str());
+	if (rom_size_off < 0 || rom_size_off > MAX_GBA_ROM_SIZE)
 	{
-		if (rom[i] == selectsong[j])
-		{
-			for (j = 0; j < 0x1E; j++)
-			{
-				if(rom[i + j] != selectsong[j])
-				{
-					diff++;
-					//j = 0;
-					//break;
-				}
-			}
+		return false;
+	}
+	size_t rom_size = (size_t) rom_size_off;
 
-			//if (j != 0x1E)
-			//{
-			//	j=0;
-			//}
-			//else
-			if (diff < 8)
-			{
-				break;
-			}
-			else
-			{
-				j = 0;
-				diff = 0;
-			}
+	// open the file
+	FILE *rom_file = fopen(rom_path.c_str(), "rb");
+	if (rom_file == NULL)
+	{
+		return false;
+	}
+
+	// allocate memory
+	this->rom_exe = new uint8_t[GSF_EXE_HEADER_SIZE + rom_size];
+	this->rom = &rom_exe[GSF_EXE_HEADER_SIZE];
+	this->rom_size = rom_size;
+
+	// read ROM
+	if (fread(rom, 1, rom_size, rom_file) != rom_size)
+	{
+		fclose(rom_file);
+		close_rom();
+		return false;
+	}
+
+	fclose(rom_file);
+	return true;
+}
+
+void Saptapper::close_rom(void)
+{
+	if (rom_exe != NULL)
+	{
+		delete [] rom_exe;
+		rom_exe = NULL;
+		rom = NULL;
+	}
+	rom_size = 0;
+}
+
+uint32_t Saptapper::find_m4a_selectsong(void)
+{
+	const uint8_t code_selectsong[0x1E] = {
+		0x00, 0xB5, 0x00, 0x04, 0x07, 0x4A, 0x08, 0x49, 
+		0x40, 0x0B, 0x40, 0x18, 0x83, 0x88, 0x59, 0x00, 
+		0xC9, 0x18, 0x89, 0x00, 0x89, 0x18, 0x0A, 0x68, 
+		0x01, 0x68, 0x10, 0x1C, 0x00, 0xF0,
+	};
+	const unsigned int code_maxdiff = 8;
+	uint32_t offset;
+
+	// check length
+	if (rom_size < sizeof(code_selectsong))
+	{
+		return GSF_INVALID_OFFSET;
+	}
+
+	// search (function address must be 32bit-aligned)
+	for (offset = 0; offset < rom_size - sizeof(code_selectsong); offset += 4)
+	{
+		// loose matching
+		if (memcmploose(&rom[offset], code_selectsong, sizeof(code_selectsong), code_maxdiff) < code_maxdiff)
+		{
+			break;
 		}
 	}
-	if (diff < 8)
+
+	// return the offset if available
+	if (offset + sizeof(code_selectsong) <= rom_size)
 	{
-		sappyoffset = gba_address_to_offset(mget4l(&rom[i + 40]));
-		unsigned long sappyoffset2;
-		sappyoffset2 = sappyoffset;
-		while ((rom[sappyoffset2 + 3] & 0x0E) == 0x08)
-		{
-			minigsfcount++;
-			sappyoffset2 += 8;
-		}
-		if (!minigsfcount)
-		{
-			k = i + 1;
-			goto selectcontinue;
-		}
-		mput3l(i + 1, &sappyblock[0xD8]);
+		return offset;
 	}
 	else
 	{
-		// fprintf(stderr, "Unable to Locate sappy_selectsongbynum\n");
+		return GSF_INVALID_OFFSET;
+	}
+}
+
+uint32_t Saptapper::find_m4a_songtable(uint32_t offset_m4a_selectsong)
+{
+	uint32_t offset;
+
+	if (offset_m4a_selectsong >= rom_size)
+	{
+		return GSF_INVALID_OFFSET;
+	}
+	if (offset_m4a_selectsong + 40 + 4 > rom_size)
+	{
+		return GSF_INVALID_OFFSET;
+	}
+
+	offset = mget4l(&rom[offset_m4a_selectsong + 40]);
+	if (!is_gba_rom_address(offset))
+	{
+		return GSF_INVALID_OFFSET;
+	}
+	offset = gba_address_to_offset(offset);
+
+	if (offset < rom_size)
+	{
+		return offset;
+	}
+	else
+	{
+		return GSF_INVALID_OFFSET;
+	}
+}
+
+uint32_t Saptapper::find_m4a_main(uint32_t offset_m4a_selectsong)
+{
+	// PUSH    {LR}
+	const uint8_t code_main[2] = {
+		0x00, 0xB5,
+	};
+	const size_t code_searchrange = 0x20;
+	uint32_t code_minoffset;
+	uint32_t code_maxoffset;
+	uint32_t offset;
+
+	assert(code_searchrange % 4 == 0);
+
+	// check length
+	if (offset_m4a_selectsong >= rom_size || offset_m4a_selectsong < 4)
+	{
+		return GSF_INVALID_OFFSET;
+	}
+	if (rom_size < sizeof(code_main))
+	{
+		return GSF_INVALID_OFFSET;
+	}
+
+	// determine search range
+	code_minoffset = (offset_m4a_selectsong >= code_searchrange) ?
+		(offset_m4a_selectsong - code_searchrange) : 0;
+	code_maxoffset = (offset_m4a_selectsong - 4 + sizeof(code_main) <= rom_size) ?
+		(offset_m4a_selectsong - 4) : (rom_size - sizeof(code_main));
+
+	// backward search
+	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
+	{
+		if (memcmp(&rom[offset], code_main, sizeof(code_main)) == 0)
+		{
+			break;
+		}
+	}
+
+	// return the offset if available
+	if (offset >= code_minoffset && offset <= code_maxoffset)
+	{
+		return offset;
+	}
+	else
+	{
+		return GSF_INVALID_OFFSET;
+	}
+}
+
+uint32_t Saptapper::find_m4a_init(uint32_t offset_m4a_main)
+{
+	const uint8_t code_init[2][2] = { 
+		{0x70, 0xB5},	// PUSH    {R4-R6,LR}
+		{0xF0, 0xB5},	// PUSH    {R4-R7,LR}
+	};
+	const size_t code_patcount = sizeof(code_init[0]) / sizeof(code_init[0][0]);
+	const size_t code_searchrange = 0x100;
+	uint32_t code_minoffset;
+	uint32_t code_maxoffset;
+	uint32_t offset;
+
+	assert(code_searchrange % 4 == 0);
+
+	// check length
+	if (offset_m4a_main >= rom_size || offset_m4a_main < 4)
+	{
+		return GSF_INVALID_OFFSET;
+	}
+	if (rom_size < sizeof(code_init[0]))
+	{
+		return GSF_INVALID_OFFSET;
+	}
+
+	// determine search range
+	code_minoffset = (offset_m4a_main >= code_searchrange) ?
+		(offset_m4a_main - code_searchrange) : 0;
+	code_maxoffset = (offset_m4a_main - 4 + sizeof(code_init[0]) <= rom_size) ?
+		(offset_m4a_main - 4) : (rom_size - sizeof(code_init[0]));
+
+	// backward search
+	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
+	{
+		size_t code_patindex;
+		for (code_patindex = 0; code_patindex < code_patcount; code_patindex++)
+		{
+			if (memcmp(&rom[offset], code_init[code_patindex], sizeof(code_init[0])) == 0)
+			{
+				break;
+			}
+		}
+		if (code_patindex != code_patcount)
+		{
+			break;
+		}
+	}
+
+	// return the offset if available
+	if (offset >= code_minoffset && offset <= code_maxoffset)
+	{
+		return offset;
+	}
+	else
+	{
+		return GSF_INVALID_OFFSET;
+	}
+}
+
+uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
+{
+	// Note that we do not use the first 5 bytes
+	// LDR     R0, [PC, #0x298]
+	// LDR     R0, [R0]
+	// LDR     R2, [PC, #0x298]
+	// LDR     R3, [R0]
+	// SUBS    R3, R3, R2
+	const uint8_t code_vsync[10] = {
+		0xA6, 0x48, 0x00, 0x68, 0xA6, 0x4A, 0x03, 0x68, 0x9B, 0x1A,
+	};
+
+	const size_t code_searchrange = 0x800;
+	const uint32_t code_cmpoffset = 5;
+	uint32_t code_minoffset;
+	uint32_t code_maxoffset;
+	uint32_t offset;
+
+	assert(code_searchrange % 4 == 0);
+	assert(code_cmpoffset < sizeof(code_vsync));
+
+	// check length
+	if (offset_m4a_init >= rom_size || offset_m4a_init < 4)
+	{
+		return GSF_INVALID_OFFSET;
+	}
+	if (rom_size < sizeof(code_vsync))
+	{
+		return GSF_INVALID_OFFSET;
+	}
+
+	// determine search range
+	code_minoffset = (offset_m4a_init >= code_searchrange) ?
+		(offset_m4a_init - code_searchrange) : 0;
+	code_maxoffset = (offset_m4a_init - 4 + sizeof(code_vsync) <= rom_size) ?
+		(offset_m4a_init - 4) : (rom_size - sizeof(code_vsync));
+
+	// backward search
+	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
+	{
+		if (memcmp(&rom[offset + code_cmpoffset], &code_vsync[code_cmpoffset], sizeof(code_vsync) - code_cmpoffset) == 0)
+		{
+			break;
+		}
+	}
+
+	// return the offset if available
+	if (offset >= code_minoffset && offset <= code_maxoffset)
+	{
+		return offset;
+	}
+	else
+	{
+		return GSF_INVALID_OFFSET;
+	}
+}
+
+Saptapper::EGsfLibResult Saptapper::find_m4a_addresses(void)
+{
+	if (manual_offset_m4a_selectsong == GSF_INVALID_OFFSET)
+	{
+		offset_m4a_selectsong = find_m4a_selectsong();
+	}
+	else
+	{
+		if (manual_offset_m4a_selectsong < rom_size)
+		{
+			offset_m4a_selectsong = manual_offset_m4a_selectsong;
+		}
+		else
+		{
+			offset_m4a_selectsong = GSF_INVALID_OFFSET;
+		}
+	}
+
+	if (manual_offset_m4a_songtable == GSF_INVALID_OFFSET)
+	{
+		offset_m4a_songtable = find_m4a_songtable(offset_m4a_selectsong);
+	}
+	else
+	{
+		if (manual_offset_m4a_songtable < rom_size)
+		{
+			offset_m4a_songtable = manual_offset_m4a_songtable;
+		}
+		else
+		{
+			offset_m4a_songtable = GSF_INVALID_OFFSET;
+		}
+	}
+
+	if (manual_offset_m4a_main == GSF_INVALID_OFFSET)
+	{
+		offset_m4a_main = find_m4a_main(offset_m4a_selectsong);
+	}
+	else
+	{
+		if (manual_offset_m4a_main < rom_size)
+		{
+			offset_m4a_main = manual_offset_m4a_main;
+		}
+		else
+		{
+			offset_m4a_main = GSF_INVALID_OFFSET;
+		}
+	}
+
+	if (manual_offset_m4a_init == GSF_INVALID_OFFSET)
+	{
+		offset_m4a_init = find_m4a_init(offset_m4a_main);
+	}
+	else
+	{
+		if (manual_offset_m4a_init < rom_size)
+		{
+			offset_m4a_init = manual_offset_m4a_init;
+		}
+		else
+		{
+			offset_m4a_init = GSF_INVALID_OFFSET;
+		}
+	}
+
+	if (manual_offset_m4a_vsync == GSF_INVALID_OFFSET)
+	{
+		offset_m4a_vsync = find_m4a_vsync(offset_m4a_init);
+	}
+	else
+	{
+		if (manual_offset_m4a_vsync < rom_size)
+		{
+			offset_m4a_vsync = manual_offset_m4a_vsync;
+		}
+		else
+		{
+			offset_m4a_vsync = GSF_INVALID_OFFSET;
+		}
+	}
+
+	if (offset_m4a_selectsong == GSF_INVALID_OFFSET)
+	{
 		return GSFLIB_NOSELECT;
 	}
-	// search prior function
-	j = 0;
-	rompointer = i - 0x20;
-	for (i--; i > rompointer; i--)
+	else if (offset_m4a_main == GSF_INVALID_OFFSET)
 	{
-		if (rom[i] == soundmain[j])
-		{
-			for (j = 0; j < 0x2; j++)
-			{
-				if (rom[i + j] != soundmain[j])
-				{
-					j = 0;
-					break;
-				}
-			}
-			if(j != 0x2)
-			{
-				j = 0;
-			}
-			else
-			{
-				break;
-			}
-		}
+		return GSFLIB_NOMAIN;
 	}
-	if (i == rompointer)
+	else if (offset_m4a_init == GSF_INVALID_OFFSET)
 	{
-		//	  fprintf(stderr,"Unable to locate sappy_Soundmain\n");
-		if (manual)
-		{
-			fprintf(stderr,"Enter a hex offset, or 0 to cancel - ");
-			gets(stroffset);
-			i = strtol(stroffset, NULL, 16);
-			if (!i)
-			{
-				return GSFLIB_NOMAIN;
-			}
-			manual=2;
-		}
-		else
-		{
-			return GSFLIB_NOMAIN;
-		}
+		return GSFLIB_NOINIT;
 	}
-	mput3l(i + 1, &sappyblock[0xDC]);
-	// search prior function, again
-	j = 0;
-	rompointer = i - 0x100;
-	for (i--; i > rompointer; i--)
+	else if (offset_m4a_vsync == GSF_INVALID_OFFSET)
 	{
-		for (k = 0; k < INIT_COUNT; k++)
-		{
-			if (rom[i] == init[k][j])
-			{
-				result = 1;
-				break;
-			}
-			else
-			{
-				result = 0;
-			}
-		}
-		if (result)
-		{
-			for (k = 0; k < INIT_COUNT; k++)
-			{
-				for (j = 0; j < 0x2; j++)
-				{
-					if (rom[i + j] != init[k][j])
-					{
-						j = 0;
-						break;
-					}
-				}
-				if(j == 2)
-				{
-					break;
-				}
-			}
-			if (j != 0x2)
-			{
-				j = 0;
-			}
-			else
-			{
-				break;
-			}
-		}
+		return GSFLIB_NOVSYNC;
 	}
-	if (i == rompointer)
-	{
-		//  fprintf(stderr, "Unable to locate sappy_SoundInit\n");
-		if (manual)
-		{
-			fprintf(stderr, "Enter a hex offset, or 0 to cancel - ");
-			gets(stroffset);
-			i = strtol(stroffset, NULL, 16);
-			if(!i)
-			{
-				return GSFLIB_NOINIT;
-			}
-			manual = 2;
-		}
-		else
-		{
-			return GSFLIB_NOINIT;
-		}
-	}
-	mput3l(i + 1, &sappyblock[0xE0]);
-	j = 0;
-	//i += 0x1800;
-	// and so on...
-	rompointer = i - 0x800;
-	for (i--; (i > 0 && i > rompointer); i--)
-	{
-		if (rom[i] == vsync[j])
-		{
-			for (j = 0; j < 0x5; j++)
-			{
-				if (rom[i + j] != vsync[j])
-				{
-					j = 0;
-					break;
-				}
-			}
-			if (j != 0x5)
-			{
-				j = 0;
-			}
-			else
-			{
-				break;
-			}
-		}
-	}
-
-	if (i == rompointer || i == 0)
-	{
-		//	  fprintf(stderr,"Unable to locate sappy_VSync\n");
-		if (manual)
-		{
-			fprintf(stderr, "Enter a hex offset, or 0 to cancel - ");
-			gets(stroffset);
-			i = strtol(stroffset, NULL, 16);
-			if(!i)
-			{
-				return GSFLIB_NOVSYNC;
-			}
-			manual = 2;
-		}
-		else
-		{
-			return GSFLIB_NOVSYNC;
-		}
-	}
-	else
-	{
-		i -= 5;
-	}
-	mput3l(i + 1, &sappyblock[0xE4]);
-
-	rompointer = 0xFF;
-lookforspace:
-	for (i = 0; i < rom_size; i += 4)
-	{
-		if (rom[i] == (unsigned char)rompointer)
-		{
-			for (j = 0; j < 0x200; j++)
-			{
-				if (rom[i + j] != (unsigned char)rompointer)
-				{
-					j = 0;
-					break;
-				}
-			}
-			if (j != 0x200)
-			{
-				j = 0;
-			}
-			else
-			{
-				break;
-			}
-		}
-	}
-	if (j == 0x200)
-	{
-		minigsfoffset = 0x8000000 + i + 0x1FC;
-		i += 0x108;
-		memcpy(rom + i, sappyblock, sizeof(sappyblock));
-		i >>= 2;
-		i -= 2;
-		mput3l(i, &rom[0]);
-	}
-	else
-	{
-		if (rompointer == 0xFF)
-		{
-			rompointer = 0x00;
-			goto lookforspace;
-		}
-		else
-		{
-			//	  fprintf(stderr, "Unable to find sufficient unprogrammed space\n");
-			return GSFLIB_NOSPACE;
-		}
-	}
-
-	//  fprintf(stdout, "uncompressed: %ld bytes\n", ucl);
-	//fflush(stdout);
-
-	if (!exe2gsf(to, uncompbuf, GSF_EXE_HEADER_SIZE + ucl))
-	{
-		return GSFLIB_OTFILE_E;
-	}
-
-	//fprintf(stderr, "ok\n");
-
+	//else if (offset_m4a_songtable == GSF_INVALID_OFFSET)
+	//{
+	//	return GSFLIB_NOSONGTABLE;
+	//}
 	return GSFLIB_OK;
+}
+
+uint32_t Saptapper::find_free_space(size_t size, uint8_t filler)
+{
+	uint32_t offset;
+	uint32_t space_offset;
+	size_t space_size = 0;
+	uint32_t max_space_offset;
+	size_t max_space_size = 0;
+
+	// check length
+	if (rom_size > 0 && size > rom_size)
+	{
+		return GSF_INVALID_OFFSET;
+	}
+
+	// search (ARM instruction must be 32bit-aligned)
+	offset = 0;
+	while (offset < rom_size - size)
+	{
+		if (rom[offset] == filler)
+		{
+			if (space_size == 0)
+			{
+				space_offset = offset;
+			}
+			space_size++;
+			offset++;
+		}
+		else
+		{
+			if (space_size > max_space_size)
+			{
+				max_space_offset = space_offset;
+				max_space_size = space_size;
+				if (max_space_size >= size)
+				{
+					break;
+				}
+			}
+			space_size = 0;
+			offset += 4 - (offset % 4);
+		}
+	}
+
+	// return the offset if available
+	if (max_space_size >= size)
+	{
+		return max_space_offset;
+	}
+	else
+	{
+		return GSF_INVALID_OFFSET;
+	}
+}
+
+uint32_t Saptapper::find_free_space(size_t size)
+{
+	uint32_t offset;
+
+	offset = find_free_space(size, 0xFF);
+	if (offset == GSF_INVALID_OFFSET)
+	{
+		offset = find_free_space(size, 0x00);
+	}
+	return offset;
+}
+
+unsigned int Saptapper::get_song_count(uint32_t offset_m4a_songtable)
+{
+	unsigned int song_count = 0;
+	uint32_t offset;
+
+	// check length
+	if (offset_m4a_songtable == GSF_INVALID_OFFSET ||
+		rom_size < 8 || offset_m4a_songtable > rom_size - 8)
+	{
+		return 0;
+	}
+
+	// parse song table
+	offset = offset_m4a_songtable;
+	while (offset + 8 <= rom_size)
+	{
+		uint32_t addr = mget4l(&rom[offset]);
+		if (!is_gba_rom_address(addr))
+		{
+			break;
+		}
+
+		song_count++;
+		offset += 8;
+	}
+	return song_count;
+}
+
+bool Saptapper::is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index)
+{
+	uint32_t offset;
+	uint32_t src_offset;
+
+	// check length
+	if (offset_m4a_songtable == GSF_INVALID_OFFSET ||
+		rom_size < 8 || offset_m4a_songtable > rom_size - 8)
+	{
+		return false;
+	}
+	src_offset = offset_m4a_songtable + (song_index * 8);
+	if (src_offset + 8 > rom_size)
+	{
+		return false;
+	}
+
+	offset = offset_m4a_songtable;
+	while (offset + 8 <= rom_size && offset < src_offset)
+	{
+		if (memcmp(&rom[offset], &rom[src_offset], 8) == 0)
+		{
+			return true;
+		}
+		offset += 8;
+	}
+	return false;
+}
+
+Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path)
+{
+	// relocatable sapphire block.bin
+	uint8_t sappyblock[248] =
+	{
+		0x00, 0x80, 0x2D, 0xE9, 0x01, 0x00, 0xBD, 0xE8, 0x50, 0x10, 0xA0, 0xE3, 0x00, 0x20, 0x90, 0xE5, 
+		0x04, 0x00, 0x80, 0xE2, 0x04, 0x10, 0x41, 0xE2, 0x00, 0x00, 0x51, 0xE3, 0xFA, 0xFF, 0xFF, 0x1A, 
+		0x0B, 0x00, 0x00, 0xEA, 0x53, 0x61, 0x70, 0x70, 0x79, 0x20, 0x44, 0x72, 0x69, 0x76, 0x65, 0x72, 
+		0x20, 0x52, 0x69, 0x70, 0x70, 0x65, 0x72, 0x20, 0x62, 0x79, 0x20, 0x43, 0x61, 0x69, 0x74, 0x53, 
+		0x69, 0x74, 0x68, 0x32, 0x5C, 0x5A, 0x6F, 0x6F, 0x70, 0x64, 0x2C, 0x20, 0x28, 0x63, 0x29, 0x20, 
+		0x32, 0x30, 0x30, 0x34, 0x00, 0x40, 0x2D, 0xE9, 0x80, 0x00, 0x9F, 0xE5, 0x21, 0x00, 0x00, 0xEB, 
+		0x88, 0x00, 0x9F, 0xE5, 0x00, 0x80, 0x2D, 0xE9, 0x02, 0x00, 0xBD, 0xE8, 0x30, 0x10, 0x81, 0xE2, 
+		0x00, 0x10, 0x80, 0xE5, 0x01, 0x03, 0xA0, 0xE3, 0x08, 0x10, 0xA0, 0xE3, 0x04, 0x10, 0x80, 0xE5, 
+		0x01, 0x10, 0xA0, 0xE3, 0x00, 0x12, 0x80, 0xE5, 0x08, 0x12, 0x80, 0xE5, 0x60, 0x00, 0x9F, 0xE5, 
+		0x40, 0x10, 0x9F, 0xE5, 0x14, 0x00, 0x00, 0xEB, 0x00, 0x00, 0x02, 0xEF, 0xFD, 0xFF, 0xFF, 0xEA, 
+		0x00, 0x40, 0x2D, 0xE9, 0x38, 0x00, 0x9F, 0xE5, 0x0E, 0x00, 0x00, 0xEB, 0x28, 0x00, 0x9F, 0xE5, 
+		0x0C, 0x00, 0x00, 0xEB, 0x01, 0x03, 0xA0, 0xE3, 0x01, 0x18, 0xA0, 0xE3, 0x01, 0x10, 0x81, 0xE2, 
+		0x00, 0x12, 0x80, 0xE5, 0x24, 0x00, 0x9F, 0xE5, 0x04, 0x10, 0x00, 0xE5, 0x01, 0x00, 0xBD, 0xE8, 
+		0x10, 0xFF, 0x2F, 0xE1, 0xFF, 0xFF, 0xFF, 0xFF, 0x59, 0x81, 0x03, 0x08, 0x4D, 0x81, 0x03, 0x08, 
+		0xD5, 0x80, 0x03, 0x08, 0x89, 0x7A, 0x03, 0x08, 0x10, 0xFF, 0x2F, 0xE1, 0x11, 0xFF, 0x2F, 0xE1, 
+		0xFC, 0x7F, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00, 
+	};
+	uint8_t *gsf_driver_block = sappyblock;
+	size_t gsf_driver_size = sizeof(sappyblock);
+
+	EGsfLibResult gsflibstat;
+
+	// obtain necessary addresses
+	gsflibstat = find_m4a_addresses();
+	if (gsflibstat != GSFLIB_OK)
+	{
+		return gsflibstat;
+	}
+
+	// set addresses to the driver block
+	mput4l(gba_offset_to_address(offset_m4a_selectsong | 1), &sappyblock[0xD8]);
+	mput4l(gba_offset_to_address(offset_m4a_main | 1), &sappyblock[0xDC]);
+	mput4l(gba_offset_to_address(offset_m4a_init | 1), &sappyblock[0xE0]);
+	mput4l(gba_offset_to_address(offset_m4a_vsync | 1), &sappyblock[0xE4]);
+
+	// determine gsf driver offset
+	if (manual_offset_gsf_driver == GSF_INVALID_OFFSET)
+	{
+		offset_gsf_driver = find_free_space(0x200) + (0x200 - gsf_driver_size);
+	}
+	else
+	{
+		if (manual_offset_gsf_driver < rom_size)
+		{
+			offset_gsf_driver = manual_offset_gsf_driver;
+		}
+		else
+		{
+			offset_gsf_driver = GSF_INVALID_OFFSET;
+		}
+	}
+	// check gsf driver offset
+	if (offset_gsf_driver == GSF_INVALID_OFFSET)
+	{
+		return GSFLIB_NOSPACE;
+	}
+
+	// determine minigsf offset
+	offset_minigsf_number = offset_gsf_driver + 0xF4;
+
+	// create backup of driver location
+	uint8_t* rom_backup = new uint8_t[gsf_driver_size];
+	uint32_t rom_first_instr = mget4l(&rom[0]);
+	memcpy(rom_backup, &rom[offset_gsf_driver], gsf_driver_size);
+
+	// put driver block temporarily
+	memcpy(&rom[offset_gsf_driver], gsf_driver_block, gsf_driver_size);
+	// change entrypoint (ARM B instruction)
+	uint32_t new_arm_b_instr = 0xEA000000 | (((offset_gsf_driver - 8) / 4) & 0xFFFFFF);
+	mput4l(new_arm_b_instr, &rom[0]);
+
+	// create gsflib file
+	put_gsf_exe_header(rom_exe, GBA_ENTRYPOINT, GBA_ENTRYPOINT, rom_size);
+	if (!exe2gsf(gsf_path, rom_exe, GSF_EXE_HEADER_SIZE + rom_size))
+	{
+		gsflibstat = GSFLIB_OTFILE_E;
+	}
+
+	// remove driver block
+	mput4l(rom_first_instr, &rom[0]);
+	memcpy(&rom[offset_gsf_driver], rom_backup, gsf_driver_size);
+	delete [] rom_backup;
+
+	return gsflibstat;
 }
 
 bool Saptapper::make_gsf_set(const std::string& rom_path)
 {
-	bool result;
+	bool result = false;
 	EGsfLibResult gsflibstat = GSFLIB_OK;
 	std::map<std::string, std::string> tags;
 
@@ -678,59 +887,59 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 	std::string gsflib_name = rom_basename + ".gsflib";
 	std::string gsflib_path = gsf_dir + PATH_SEPARATOR_STR + gsflib_name;
 
+	// load ROM image
+	if (!load_rom_file(rom_path))
+	{
+		fprintf(stderr, "Error: %s - Could not be loaded\n", rom_path.c_str());
+		return false;
+	}
+
 	// create output directory
 	_mkdir(gsf_dir.c_str());
 	if (!path_isdir(gsf_dir.c_str()))
 	{
 		fprintf(stderr, "Error: %s - Directory could not be created\n", gsf_dir.c_str());
+		close_rom();
 		return false;
 	}
 
 	// create gsflib
-	gsflibstat = dogsflib(rom_path.c_str(), gsflib_path.c_str());
+	gsflibstat = make_gsflib(gsflib_path);
 	if (gsflibstat != GSFLIB_OK)
 	{
 		fprintf(stderr, "Error: %s - %s\n", rom_path.c_str(), get_gsflib_error(gsflibstat));
 		_rmdir(gsf_dir.c_str());
+		close_rom();
 		return false;
 	}
 
-	// create minigsfs
-	int minigsferrors = 0;
-	int size = (minigsfcount > 255) ? 2 : 1;
+	// determine minigsf constants
+	uint32_t minigsfoffset = offset_minigsf_number;
+	unsigned int minigsfcount = get_song_count(offset_m4a_songtable);
+	unsigned int minigsferrors = 0;
+
+	// determine minigsf size
+	size_t minigsfsize = 0;
+	do
+	{
+		minigsfsize++;
+	} while((minigsfcount >> (minigsfsize * 8)) != 0);
+
+	// set minigsf tags
 	tags["_lib"] = gsflib_name;
-	if (manual == 2)
-	{
-		char nickname[64];
-		printf("Enter your name for GSFby purposes.\n");
-		printf("The GSFBy tag will look like,\n");
-		printf("Saptapper, with help of <your name here>\n");
-		gets(nickname);
-		if(!strcmp(nickname, "CaitSith2"))
-		{
-			tags["gsfby"] = "Caitsith2";
-		}
-		else
-		{
-			tags["gsfby"]= std::string("Saptapper, with help of ") + nickname;
-		}
-		manual = 1;
-	}
-	else
-	{
-		tags["gsfby"] = "Saptapper";
-	}
+	tags["gsfby"] = "Saptapper";
+
 	result = false;
-	for (int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
+	for (unsigned int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
 	{
 		char minigsfname[PATH_MAX];
 
 		sprintf(minigsfname, "%s.%.4X.minigsf", rom_basename.c_str(), minigsfindex);
 		std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
 
-		if (isduplicate(&uncompbuf[12], sappyoffset, minigsfindex) == 0)
+		if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
 		{
-			if (make_minigsf(minigsf_path, minigsfoffset, size, minigsfindex, tags))
+			if (make_minigsf(minigsf_path, minigsfoffset, minigsfsize, minigsfindex, tags))
 			{
 				result = true;
 			}
@@ -739,17 +948,15 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 				minigsferrors++;
 			}
 		}
-		//else
-		//{
-		//	fprintf(stderr, "|");
-		//}
 	}
-	//fprintf(stderr, "\n");
 
+	// show minigsf error count
 	if (minigsferrors > 0)
 	{
 		fprintf(stderr, "%d error(s)\n", minigsferrors);
 	}
+
+	close_rom();
 	return result;
 }
 
@@ -757,6 +964,11 @@ void printUsage(const char *cmd)
 {
 	const char *availableOptions[] = {
 		"--help", "Show this help",
+		"--offset-selectsong 0xXXXXXXXX", "Specify the offset of sappy_selectsong function",
+		"--offset-songtable 0xXXXXXXXX", "Specify the offset of song table (well known Sappy offset)",
+		"--offset-main 0xXXXXXXXX", "Specify the offset of sappy_main function",
+		"--offset-init 0xXXXXXXXX", "Specify the offset of sappy_init function",
+		"--offset-vsync 0xXXXXXXXX", "Specify the offset of sappy_vsync function",
 	};
 
 	printf("%s %s\n", APP_NAME, APP_VER);
@@ -787,6 +999,9 @@ int main(int argc, char **argv)
 	int argnum;
 	int argi;
 
+	char *strtol_endp;
+	unsigned long ul;
+
 	argi = 1;
 	while (argi < argc && argv[argi][0] == '-')
 	{
@@ -794,6 +1009,111 @@ int main(int argc, char **argv)
 		{
 			printUsage(argv[0]);
 			return EXIT_SUCCESS;
+		}
+		else if (strcmp(argv[argi], "--offset-selectsong") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			// GBA ROM address to offset
+			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
+			{
+				ul &= 0x01FFFFFF;
+			}
+			app.set_m4a_selectsong(ul);
+			argi++;
+		}
+		else if (strcmp(argv[argi], "--offset-songtable") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			// GBA ROM address to offset
+			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
+			{
+				ul &= 0x01FFFFFF;
+			}
+			app.set_m4a_songtable(ul);
+			argi++;
+		}
+		else if (strcmp(argv[argi], "--offset-main") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			// GBA ROM address to offset
+			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
+			{
+				ul &= 0x01FFFFFF;
+			}
+			app.set_m4a_main(ul);
+			argi++;
+		}
+		else if (strcmp(argv[argi], "--offset-init") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			// GBA ROM address to offset
+			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
+			{
+				ul &= 0x01FFFFFF;
+			}
+			app.set_m4a_init(ul);
+			argi++;
+		}
+		else if (strcmp(argv[argi], "--offset-vsync") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			// GBA ROM address to offset
+			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
+			{
+				ul &= 0x01FFFFFF;
+			}
+			app.set_m4a_vsync(ul);
+			argi++;
 		}
 		else
 		{

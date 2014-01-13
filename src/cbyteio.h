@@ -67,31 +67,31 @@ static INLINE int varintlen(unsigned int value)
 }
 
 /** get 1 byte */
-static INLINE int mget1(const uint8_t* data)
+static INLINE unsigned int mget1(const uint8_t* data)
 {
 	return data[0];
 }
 
 /** get 2 bytes (little-endian) */
-static INLINE int mget2l(const uint8_t* data)
+static INLINE unsigned int mget2l(const uint8_t* data)
 {
 	return data[0] | (data[1] * 0x0100);
 }
 
 /** get 3 bytes (little-endian) */
-static INLINE int mget3l(const uint8_t* data)
+static INLINE unsigned int mget3l(const uint8_t* data)
 {
 	return data[0] | (data[1] * 0x0100) | (data[2] * 0x010000);
 }
 
 /** get 4 bytes (little-endian) */
-static INLINE int mget4l(const uint8_t* data)
+static INLINE unsigned int mget4l(const uint8_t* data)
 {
 	return data[0] | (data[1] * 0x0100) | (data[2] * 0x010000) | (data[3] * 0x01000000);
 }
 
 /** get variable-length integer (little-endian) */
-static INLINE int mgetvl(const uint8_t* data)
+static INLINE unsigned int mgetvl(const uint8_t* data)
 {
 	unsigned int value = 0;
 	int len = 0;
@@ -101,29 +101,29 @@ static INLINE int mgetvl(const uint8_t* data)
 		c = data[len];
 		value |= (c & 0x7F) << (7 * len);
 	} while (len < 4 && (c & 0x80) != 0);
-	return (int) value;
+	return value;
 }
 
 /** get 2 bytes (big-endian) */
-static INLINE int mget2b(const uint8_t* data)
+static INLINE unsigned int mget2b(const uint8_t* data)
 {
 	return data[1] | (data[0] * 0x0100);
 }
 
 /** get 3 bytes (big-endian) */
-static INLINE int mget3b(const uint8_t* data)
+static INLINE unsigned int mget3b(const uint8_t* data)
 {
 	return data[2] | (data[1] * 0x0100) | (data[0] * 0x010000);
 }
 
 /** get 4 bytes (big-endian) */
-static INLINE int mget4b(const uint8_t* data)
+static INLINE unsigned int mget4b(const uint8_t* data)
 {
 	return data[3] | (data[2] * 0x0100) | (data[1] * 0x010000) | (data[0] * 0x01000000);
 }
 
 /** get variable-length integer (big-endian) */
-static INLINE int mgetvb(const uint8_t* data)
+static INLINE unsigned int mgetvb(const uint8_t* data)
 {
 	unsigned int value = 0;
 	int len = 0;
@@ -133,51 +133,41 @@ static INLINE int mgetvb(const uint8_t* data)
 		c = data[len];
 		value = (value << 7) | (c & 0x7F);
 	} while (len < 4 && (c & 0x80) != 0);
-	return (int) value;
+	return value;
 }
 
 /** put 1 byte */
-static INLINE int mput1(int value, uint8_t* data)
+static INLINE unsigned int mput1(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[0] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[0] = value & 0xff;
+	return data[0];
 }
 
 /** put 2 bytes (little-endian) */
-static INLINE int mput2l(int value, uint8_t* data)
+static INLINE unsigned int mput2l(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[0] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[1] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[0] = value & 0xff;
+	data[1] = (value >> 8) & 0xff;
+	return data[1];
 }
 
 /** put 3 bytes (little-endian) */
-static INLINE int mput3l(int value, uint8_t* data)
+static INLINE unsigned int mput3l(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[0] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[1] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[2] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[0] = value & 0xff;
+	data[1] = (value >> 8) & 0xff;
+	data[2] = (value >> 16) & 0xff;
+	return data[2];
 }
 
 /** put 4 bytes (little-endian) */
-static INLINE int mput4l(int value, uint8_t* data)
+static INLINE unsigned int mput4l(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[0] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[1] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[2] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[3] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[0] = value & 0xff;
+	data[1] = (value >> 8) & 0xff;
+	data[2] = (value >> 16) & 0xff;
+	data[3] = (value >> 24) & 0xff;
+	return data[3];
 }
 
 /** put variable-length integer (little-endian) */
@@ -185,49 +175,38 @@ static INLINE int mputvl(unsigned int value, uint8_t* data)
 {
 	int i;
 	int len = varintlen(value);
-	int lastPut;
 	for (i = 0; i <len; i++)
 	{
-		lastPut = (int) (((value >> (7 * i)) & 0x7F) | (i < len - 1) ? 0x80 : 0);
-		data[i] = lastPut;
+		data[i] = ((value >> (7 * i)) & 0x7F) | (i < len - 1) ? 0x80 : 0;
 	}
-	return lastPut;
+	return data[len - 1];
 }
 
 /** put 2 bytes (big-endian) */
-static INLINE int mput2b(int value, uint8_t* data)
+static INLINE unsigned int mput2b(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[1] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[0] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[1] = value & 0xff;
+	data[0] = (value >> 8) & 0xff;
+	return data[0];
 }
 
 /** put 3 bytes (big-endian) */
-static INLINE int mput3b(int value, uint8_t* data)
+static INLINE unsigned int mput3b(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[2] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[1] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[0] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[2] = value & 0xff;
+	data[1] = (value >> 8) & 0xff;
+	data[0] = (value >> 16) & 0xff;
+	return data[0];
 }
 
 /** put 4 bytes (big-endian) */
-static INLINE int mput4b(int value, uint8_t* data)
+static INLINE unsigned int mput4b(unsigned int value, uint8_t* data)
 {
-	int lastPut = value;
-	data[3] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[2] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[1] = lastPut & 0xff;
-	lastPut /= 0x0100;
-	data[0] = lastPut & 0xff;
-	return lastPut & 0xff;
+	data[3] = value & 0xff;
+	data[2] = (value >> 8) & 0xff;
+	data[1] = (value >> 16) & 0xff;
+	data[0] = (value >> 24) & 0xff;
+	return data[0];
 }
 
 /** put variable-length integer (big-endian) */
@@ -235,23 +214,21 @@ static INLINE int mputvb(unsigned int value, uint8_t* data)
 {
 	int i;
 	int len = varintlen(value);
-	int lastPut;
 	for (i = 0; i <len; i++)
 	{
-		lastPut = (int) (((value >> (7 * (len - i - 1))) & 0x7F) | (i < len - 1) ? 0x80 : 0);
-		data[i] = lastPut;
+		data[i] = ((value >> (7 * (len - i - 1))) & 0x7F) | (i < len - 1) ? 0x80 : 0;
 	}
-	return lastPut;
+	return data[0];
 }
 
 /** get 1 byte from file */
-static INLINE int fget1(FILE* stream)
+static INLINE unsigned int fget1(FILE* stream)
 {
 	return fgetc(stream);
 }
 
 /** get 2 bytes from file (little-endian) */
-static INLINE int fget2l(FILE* stream)
+static INLINE unsigned int fget2l(FILE* stream)
 {
 	int b1;
 	int b2;
@@ -266,7 +243,7 @@ static INLINE int fget2l(FILE* stream)
 }
 
 /** get 3 bytes from file (little-endian) */
-static INLINE int fget3l(FILE* stream)
+static INLINE unsigned int fget3l(FILE* stream)
 {
 	int b1;
 	int b2;
@@ -283,7 +260,7 @@ static INLINE int fget3l(FILE* stream)
 }
 
 /** get 4 bytes from file (little-endian) */
-static INLINE int fget4l(FILE* stream)
+static INLINE unsigned int fget4l(FILE* stream)
 {
 	int b1;
 	int b2;
@@ -302,7 +279,7 @@ static INLINE int fget4l(FILE* stream)
 }
 
 /** get variable-length integer to file (little-endian) */
-static INLINE int fgetvl(FILE* stream)
+static INLINE unsigned int fgetvl(FILE* stream)
 {
 	unsigned int value = 0;
 	int len = 0;
@@ -317,11 +294,11 @@ static INLINE int fgetvl(FILE* stream)
 		value |= (c & 0x7F) << (7 * len);
 		len++;
 	} while (len < 4 && (c & 0x80) != 0);
-	return (int) value;
+	return value;
 }
 
 /** get 2 bytes from file (big-endian) */
-static INLINE int fget2b(FILE* stream)
+static INLINE unsigned int fget2b(FILE* stream)
 {
 	int b1;
 	int b2;
@@ -336,7 +313,7 @@ static INLINE int fget2b(FILE* stream)
 }
 
 /** get 3 bytes from file (big-endian) */
-static INLINE int fget3b(FILE* stream)
+static INLINE unsigned int fget3b(FILE* stream)
 {
 	int b1;
 	int b2;
@@ -353,7 +330,7 @@ static INLINE int fget3b(FILE* stream)
 }
 
 /** get 4 bytes from file (big-endian) */
-static INLINE int fget4b(FILE* stream)
+static INLINE unsigned int fget4b(FILE* stream)
 {
 	int b1;
 	int b2;
@@ -372,7 +349,7 @@ static INLINE int fget4b(FILE* stream)
 }
 
 /** get variable-length integer to file (big-endian) */
-static INLINE int fgetvb(FILE* stream)
+static INLINE unsigned int fgetvb(FILE* stream)
 {
 	unsigned int value = 0;
 	int len = 0;
@@ -387,19 +364,19 @@ static INLINE int fgetvb(FILE* stream)
 		value = (value << 7) | (c & 0x7F);
 		len++;
 	} while (len < 4 && (c & 0x80) != 0);
-	return (int) value;
+	return value;
 }
 
 /** put 1 byte to file */
-static INLINE int fput1(int value, FILE* stream)
+static INLINE unsigned int fput1(unsigned int value, FILE* stream)
 {
 	return fputc(value & 0xff, stream);
 }
 
 /** put 2 bytes to file (little-endian) */
-static INLINE int fput2l(int value, FILE* stream)
+static INLINE unsigned int fput2l(unsigned int value, FILE* stream)
 {
-	int result;
+	unsigned int result;
 
 	result = fputc(value & 0xff, stream);
 	if(result != EOF)
@@ -410,9 +387,9 @@ static INLINE int fput2l(int value, FILE* stream)
 }
 
 /** put 3 bytes to file (little-endian) */
-static INLINE int fput3l(int value, FILE* stream)
+static INLINE unsigned int fput3l(unsigned int value, FILE* stream)
 {
-	int result;
+	unsigned int result;
 
 	result = fputc(value & 0xff, stream);
 	if(result != EOF)
@@ -427,9 +404,9 @@ static INLINE int fput3l(int value, FILE* stream)
 }
 
 /** put 4 bytes to file (little-endian) */
-static INLINE int fput4l(int value, FILE* stream)
+static INLINE unsigned int fput4l(unsigned int value, FILE* stream)
 {
-	int result;
+	unsigned int result;
 
 	result = fputc(value & 0xff, stream);
 	if(result != EOF)
@@ -448,11 +425,11 @@ static INLINE int fput4l(int value, FILE* stream)
 }
 
 /** put variable-length integer to file (little-endian) */
-static INLINE int fputvl(unsigned int value, FILE* stream)
+static INLINE unsigned int fputvl(unsigned int value, FILE* stream)
 {
 	int i;
 	int len = varintlen(value);
-	int result;
+	unsigned int result;
 	for (i = 0; i < len; i++)
 	{
 		result = fputc(((value >> (7 * i)) & 0x7F) | ((i < len - 1) ? 0x80 : 0), stream);
@@ -465,9 +442,9 @@ static INLINE int fputvl(unsigned int value, FILE* stream)
 }
 
 /** put 2 bytes to file (big-endian) */
-static INLINE int fput2b(int value, FILE* stream)
+static INLINE unsigned int fput2b(unsigned int value, FILE* stream)
 {
-	int result;
+	unsigned int result;
 
 	result = fputc((value >> 8) & 0xff, stream);
 	if(result != EOF)
@@ -478,9 +455,9 @@ static INLINE int fput2b(int value, FILE* stream)
 }
 
 /** put 3 bytes to file (big-endian) */
-static INLINE int fput3b(int value, FILE* stream)
+static INLINE unsigned int fput3b(unsigned int value, FILE* stream)
 {
-	int result;
+	unsigned int result;
 
 	result = fputc((value >> 16) & 0xff, stream);
 	if(result != EOF)
@@ -495,9 +472,9 @@ static INLINE int fput3b(int value, FILE* stream)
 }
 
 /** put 4 bytes to file (big-endian) */
-static INLINE int fput4b(int value, FILE* stream)
+static INLINE unsigned int fput4b(unsigned int value, FILE* stream)
 {
-	int result;
+	unsigned int result;
 
 	result = fputc((value >> 24) & 0xff, stream);
 	if(result != EOF)
@@ -516,11 +493,11 @@ static INLINE int fput4b(int value, FILE* stream)
 }
 
 /** put variable-length integer to file (big-endian) */
-static INLINE int fputvb(unsigned int value, FILE* stream)
+static INLINE unsigned int fputvb(unsigned int value, FILE* stream)
 {
 	int i;
 	int len = varintlen(value);
-	int result;
+	unsigned int result;
 	for (i = 0; i < len; i++)
 	{
 		result = fputc(((value >> (7 * (len - i - 1))) & 0x7F) | ((i < len - 1) ? 0x80 : 0), stream);

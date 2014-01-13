@@ -8,16 +8,18 @@
 
 #include "BytePattern.h"
 
-#define INIT_COUNT	2
-
 #define PSF_SIGNATURE	"PSF"
 #define PSF_TAG_SIGNATURE	"[TAG]"
+
+#define GBA_ENTRYPOINT	0x08000000
 
 #define GSF_PSF_VERSION	0x22
 #define GSF_EXE_HEADER_SIZE	12
 
-#define MAX_GBA_ROM_SIZE	0x2000000
+#define MAX_GBA_ROM_SIZE	0x02000000
 #define MAX_GSF_EXE_SIZE	(MAX_GBA_ROM_SIZE + GSF_EXE_HEADER_SIZE)
+
+#define GSF_INVALID_OFFSET	0xFFFFFFFF
 
 class Saptapper
 {
@@ -35,50 +37,107 @@ public:
 		GSFLIB_OTFILE_E,
 	};
 
-public:
-	uint8_t* compbuf;
-	uint8_t* uncompbuf;
+private:
+	uint8_t* rom;
+	uint8_t* rom_exe;
+	size_t rom_size;
 
-	static const uint8_t selectsong[0x1E];
-	static const uint8_t init[2][INIT_COUNT];
-	static const uint8_t soundmain[2];
-	static const uint8_t vsync[5];
-	static const uint8_t SAPPYBLOCK[248];
+	uint32_t offset_m4a_main;
+	uint32_t offset_m4a_selectsong;
+	uint32_t offset_m4a_init;
+	uint32_t offset_m4a_vsync;
+	uint32_t offset_m4a_songtable;
+	uint32_t offset_gsf_driver;
+	uint32_t offset_minigsf_number;
 
-	uint32_t minigsfoffset;
-	uint32_t minigsfcount;
-
-	uint32_t entrypoint;
-	uint32_t load_offset;
-	uint32_t rom_size;
-
-	uint32_t sappyoffset;
-	int manual;
+	uint32_t manual_offset_m4a_main;
+	uint32_t manual_offset_m4a_selectsong;
+	uint32_t manual_offset_m4a_init;
+	uint32_t manual_offset_m4a_vsync;
+	uint32_t manual_offset_m4a_songtable;
+	uint32_t manual_offset_gsf_driver;
 
 public:
 	Saptapper() :
-		manual(0)
+		rom(NULL),
+		rom_exe(NULL),
+		rom_size(GSF_INVALID_OFFSET),
+		offset_m4a_main(GSF_INVALID_OFFSET),
+		offset_m4a_selectsong(GSF_INVALID_OFFSET),
+		offset_m4a_init(GSF_INVALID_OFFSET),
+		offset_m4a_vsync(GSF_INVALID_OFFSET),
+		offset_m4a_songtable(GSF_INVALID_OFFSET),
+		offset_gsf_driver(GSF_INVALID_OFFSET),
+		offset_minigsf_number(GSF_INVALID_OFFSET),
+		manual_offset_m4a_main(GSF_INVALID_OFFSET),
+		manual_offset_m4a_selectsong(GSF_INVALID_OFFSET),
+		manual_offset_m4a_init(GSF_INVALID_OFFSET),
+		manual_offset_m4a_vsync(GSF_INVALID_OFFSET),
+		manual_offset_m4a_songtable(GSF_INVALID_OFFSET),
+		manual_offset_gsf_driver(GSF_INVALID_OFFSET)
 	{
-		compbuf = new uint8_t[MAX_GSF_EXE_SIZE];
-		uncompbuf = new uint8_t[MAX_GSF_EXE_SIZE];
 	}
 
 	~Saptapper()
 	{
+		close_rom();
 	}
 
 	static void put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size);
 	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size);
 	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size, std::map<std::string, std::string>& tags);
-	static bool make_minigsf(const std::string& gsf_path, uint32_t offset, size_t size, uint32_t num, std::map<std::string, std::string>& tags);
-
+	static bool make_minigsf(const std::string& gsf_path, uint32_t address, size_t size, uint32_t num, std::map<std::string, std::string>& tags);
 	static const char* get_gsflib_error(EGsfLibResult error_type);
-	EGsfLibResult dogsflib(const char *from, const char *to);
 
+	inline void set_m4a_main(uint32_t offset)
+	{
+		manual_offset_m4a_main = offset;
+	}
+
+	inline void set_m4a_selectsong(uint32_t offset)
+	{
+		manual_offset_m4a_selectsong = offset;
+	}
+
+	inline void set_m4a_init(uint32_t offset)
+	{
+		manual_offset_m4a_init = offset;
+	}
+
+	inline void set_m4a_vsync(uint32_t offset)
+	{
+		manual_offset_m4a_vsync = offset;
+	}
+
+	inline void set_m4a_songtable(uint32_t offset)
+	{
+		manual_offset_m4a_songtable = offset;
+	}
+
+	inline void set_gsf_driver_offset(uint32_t offset)
+	{
+		manual_offset_gsf_driver = offset;
+	}
+
+	bool load_rom(uint8_t* rom, size_t rom_size);
+	bool load_rom_file(const std::string& rom_path);
+	void close_rom(void);
+
+	uint32_t find_m4a_selectsong(void);
+	uint32_t find_m4a_songtable(uint32_t offset_m4a_selectsong);
+	uint32_t find_m4a_main(uint32_t offset_m4a_selectsong);
+	uint32_t find_m4a_init(uint32_t offset_m4a_main);
+	uint32_t find_m4a_vsync(uint32_t offset_m4a_init);
+	uint32_t find_free_space(size_t size, uint8_t filler);
+	uint32_t find_free_space(size_t size);
+	EGsfLibResult find_m4a_addresses(void);
+	unsigned int get_song_count(uint32_t offset_m4a_songtable);
+
+	EGsfLibResult make_gsflib(const std::string& gsf_path);
 	bool make_gsf_set(const std::string& rom_path);
 
 private:
-	int isduplicate(uint8_t *rom, uint32_t sappyoffset, int num);
+	bool is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index);
 
 	inline bool is_gba_rom_address(uint32_t address)
 	{
@@ -92,6 +151,11 @@ private:
 			//fprintf(stderr, "Warning: the address $%08X is not ROM address\n", address);
 		}
 		return address & 0x01FFFFFF;
+	}
+
+	inline uint32_t gba_offset_to_address(uint32_t offset)
+	{
+		return 0x08000000 | (offset & 0x01FFFFFF);
 	}
 };
 
