@@ -7,6 +7,11 @@ Automated GSF ripper tool created by Caitsith2, revised by loveemu.
 This modified version aims to provide readable and customizable code.
 Additionally, it provides some extra options that might be useful.
 
+Downloads
+---------
+
+- [saptapper-20140112.7z](https://loveemu.googlecode.com/files/saptapper-20140112.7z) (all ripping routines are identical to unaltered version)
+
 Usage
 -----
 
