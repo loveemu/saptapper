@@ -57,6 +57,8 @@ private:
 	uint32_t manual_offset_m4a_songtable;
 	uint32_t manual_offset_gsf_driver;
 
+	std::string tag_gsfby;
+
 public:
 	Saptapper() :
 		rom(NULL),
@@ -135,6 +137,11 @@ public:
 
 	EGsfLibResult make_gsflib(const std::string& gsf_path);
 	bool make_gsf_set(const std::string& rom_path);
+
+	inline void set_tag_gsfby(const std::string& gsfby)
+	{
+		this->tag_gsfby = gsfby;
+	}
 
 private:
 	bool is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index);

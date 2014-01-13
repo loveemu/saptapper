@@ -927,7 +927,21 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 
 	// set minigsf tags
 	tags["_lib"] = gsflib_name;
-	tags["gsfby"] = "Saptapper";
+	if (tag_gsfby.empty())
+	{
+		tags["gsfby"] = "Saptapper";
+	}
+	else
+	{
+		if (tag_gsfby == "Caitsith2")
+		{
+			tags["gsfby"] = tag_gsfby;
+		}
+		else
+		{
+			tags["gsfby"] = "Saptapper, with help of " + tag_gsfby;
+		}
+	}
 
 	result = false;
 	for (unsigned int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
@@ -964,11 +978,12 @@ void printUsage(const char *cmd)
 {
 	const char *availableOptions[] = {
 		"--help", "Show this help",
-		"--offset-selectsong 0xXXXXXXXX", "Specify the offset of sappy_selectsong function",
-		"--offset-songtable 0xXXXXXXXX", "Specify the offset of song table (well known Sappy offset)",
-		"--offset-main 0xXXXXXXXX", "Specify the offset of sappy_main function",
-		"--offset-init 0xXXXXXXXX", "Specify the offset of sappy_init function",
-		"--offset-vsync 0xXXXXXXXX", "Specify the offset of sappy_vsync function",
+		"--offset-selectsong [0xXXXXXXXX]", "Specify the offset of sappy_selectsong function",
+		"--offset-songtable [0xXXXXXXXX]", "Specify the offset of song table (well known Sappy offset)",
+		"--offset-main [0xXXXXXXXX]", "Specify the offset of sappy_main function",
+		"--offset-init [0xXXXXXXXX]", "Specify the offset of sappy_init function",
+		"--offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
+		"--tag-gsfby [name]", "Specify the nickname of GSF ripper",
 	};
 
 	printf("%s %s\n", APP_NAME, APP_VER);
@@ -1113,6 +1128,16 @@ int main(int argc, char **argv)
 				ul &= 0x01FFFFFF;
 			}
 			app.set_m4a_vsync(ul);
+			argi++;
+		}
+		else if (strcmp(argv[argi], "--tag-gsfby") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			app.set_tag_gsfby(argv[argi + 1]);
 			argi++;
 		}
 		else
