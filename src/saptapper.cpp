@@ -687,10 +687,10 @@ uint32_t Saptapper::find_free_space(size_t size, uint8_t filler)
 			{
 				max_space_offset = space_offset;
 				max_space_size = space_size;
-				//if (max_space_size >= size)
-				//{
-				//	break;
-				//}
+				if (max_space_size >= size && !prefer_larger_free_space)
+				{
+					break;
+				}
 			}
 			space_size = 0;
 			offset += 4 - (offset % 4);
@@ -1280,6 +1280,10 @@ int main(int argc, char **argv)
 
 			argi++;
 			return EXIT_SUCCESS;
+		}
+		else if (strcmp(argv[argi], "--largespace") == 0)
+		{
+			app.set_prefer_larger_free_space(true);
 		}
 		else
 		{

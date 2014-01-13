@@ -60,6 +60,7 @@ private:
 	std::string tag_gsfby;
 
 	bool quiet;
+	bool prefer_larger_free_space;
 
 public:
 	Saptapper() :
@@ -79,7 +80,8 @@ public:
 		manual_offset_m4a_vsync(GSF_INVALID_OFFSET),
 		manual_offset_m4a_songtable(GSF_INVALID_OFFSET),
 		manual_offset_gsf_driver(GSF_INVALID_OFFSET),
-		quiet(true)
+		quiet(true),
+		prefer_larger_free_space(false)
 	{
 	}
 
@@ -149,6 +151,11 @@ public:
 	inline void set_quiet(bool quiet)
 	{
 		this->quiet = quiet;
+	}
+
+	inline void set_prefer_larger_free_space(bool prefer_larger_free_space)
+	{
+		this->prefer_larger_free_space = prefer_larger_free_space;
 	}
 
 	static inline bool is_gba_rom_address(uint32_t address)
