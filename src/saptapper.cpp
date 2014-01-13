@@ -887,11 +887,26 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 	std::string gsflib_name = rom_basename + ".gsflib";
 	std::string gsflib_path = gsf_dir + PATH_SEPARATOR_STR + gsflib_name;
 
+	if (!quiet)
+	{
+		printf("%s\n", c_rom_base);
+		printf("----------------------------------------\n");
+		printf("\n");
+	}
+
 	// load ROM image
 	if (!load_rom_file(rom_path))
 	{
 		fprintf(stderr, "Error: %s - Could not be loaded\n", rom_path.c_str());
 		return false;
+	}
+
+	std::string rom_title = std::string((const char*)&rom[0xA0], 12);
+	std::string rom_id = std::string((const char*)&rom[0xAC], 4);
+	if (!quiet)
+	{
+		printf("%s (%s)\n", rom_title.c_str(), rom_id.c_str());
+		printf("\n");
 	}
 
 	// create output directory
@@ -905,6 +920,74 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 
 	// create gsflib
 	gsflibstat = make_gsflib(gsflib_path);
+
+	// determine minigsf constants
+	uint32_t minigsfoffset = offset_minigsf_number;
+	unsigned int minigsfcount = (offset_m4a_songtable != GSF_INVALID_OFFSET) ? get_song_count(offset_m4a_songtable) : 0;
+	unsigned int minigsferrors = 0;
+	unsigned int minigsfdupes = 0;
+
+	// show address info
+	if (!quiet)
+	{
+		if (offset_m4a_init != GSF_INVALID_OFFSET)
+		{
+			printf("- sappy_init = 0x%08X\n", gba_offset_to_address(offset_m4a_init));
+		}
+		else
+		{
+			printf("- sappy_init = undefined\n");
+		}
+
+		if (offset_m4a_main != GSF_INVALID_OFFSET)
+		{
+			printf("- sappy_main = 0x%08X\n", gba_offset_to_address(offset_m4a_main));
+		}
+		else
+		{
+			printf("- sappy_main = undefined\n");
+		}
+
+		if (offset_m4a_selectsong != GSF_INVALID_OFFSET)
+		{
+			printf("- sappy_selectsongbynum = 0x%08X\n", gba_offset_to_address(offset_m4a_selectsong));
+		}
+		else
+		{
+			printf("- sappy_selectsongbynum = undefined\n");
+		}
+
+		if (offset_m4a_vsync != GSF_INVALID_OFFSET)
+		{
+			printf("- sappy_vsync = 0x%08X\n", gba_offset_to_address(offset_m4a_vsync));
+		}
+		else
+		{
+			printf("- sappy_vsync = undefined\n");
+		}
+
+		if (offset_m4a_songtable != GSF_INVALID_OFFSET)
+		{
+			printf("- sappy_songs = 0x%08X\n", gba_offset_to_address(offset_m4a_songtable));
+		}
+		else
+		{
+			printf("- sappy_songs = undefined\n");
+		}
+
+		if (offset_gsf_driver != GSF_INVALID_OFFSET)
+		{
+			printf("- gsf_driver_block = 0x%08X\n", gba_offset_to_address(offset_gsf_driver));
+		}
+		else
+		{
+			printf("- gsf_driver_block = undefined\n");
+		}
+
+		printf("\n");
+	}
+
+	// gsflib succeeded?
 	if (gsflibstat != GSFLIB_OK)
 	{
 		fprintf(stderr, "Error: %s - %s\n", rom_path.c_str(), get_gsflib_error(gsflibstat));
@@ -912,11 +995,6 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 		close_rom();
 		return false;
 	}
-
-	// determine minigsf constants
-	uint32_t minigsfoffset = offset_minigsf_number;
-	unsigned int minigsfcount = get_song_count(offset_m4a_songtable);
-	unsigned int minigsferrors = 0;
 
 	// determine minigsf size
 	size_t minigsfsize = 0;
@@ -943,7 +1021,7 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 		}
 	}
 
-	result = false;
+	result = true;
 	for (unsigned int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
 	{
 		char minigsfname[PATH_MAX];
@@ -953,21 +1031,42 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 
 		if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
 		{
-			if (make_minigsf(minigsf_path, minigsfoffset, minigsfsize, minigsfindex, tags))
-			{
-				result = true;
-			}
-			else
+			if (!make_minigsf(minigsf_path, minigsfoffset, minigsfsize, minigsfindex, tags))
 			{
 				minigsferrors++;
 			}
 		}
+		else
+		{
+			minigsfdupes++;
+		}
 	}
 
-	// show minigsf error count
-	if (minigsferrors > 0)
+	// show song count
+	if (quiet)
 	{
-		fprintf(stderr, "%d error(s)\n", minigsferrors);
+		if (minigsfcount == 0)
+		{
+			fprintf(stderr, "No songs\n");
+		}
+		if (minigsferrors > 0)
+		{
+			fprintf(stderr, "%d error(s)\n", minigsferrors);
+		}
+	}
+	else
+	{
+		printf("%d succeeded", minigsfcount - minigsfdupes - minigsferrors);
+		if (minigsferrors > 0)
+		{
+			printf(", %d failed", minigsferrors);
+		}
+		if (minigsfdupes > 0)
+		{
+			printf(", %d skipped", minigsfdupes);
+		}
+		printf("\n");
+		printf("\n");
 	}
 
 	close_rom();
@@ -978,6 +1077,7 @@ void printUsage(const char *cmd)
 {
 	const char *availableOptions[] = {
 		"--help", "Show this help",
+		"-v, --verbose", "Output ripping info to STDOUT",
 		"--offset-selectsong [0xXXXXXXXX]", "Specify the offset of sappy_selectsong function",
 		"--offset-songtable [0xXXXXXXXX]", "Specify the offset of song table (well known Sappy offset)",
 		"--offset-main [0xXXXXXXXX]", "Specify the offset of sappy_main function",
@@ -1018,6 +1118,8 @@ int main(int argc, char **argv)
 	char *strtol_endp;
 	unsigned long ul;
 
+	app.set_quiet(true);
+
 	argi = 1;
 	while (argi < argc && argv[argi][0] == '-')
 	{
@@ -1025,6 +1127,10 @@ int main(int argc, char **argv)
 		{
 			printUsage(argv[0]);
 			return EXIT_SUCCESS;
+		}
+		else if (strcmp(argv[argi], "-v") == 0 || strcmp(argv[argi], "--verbose") == 0)
+		{
+			app.set_quiet(false);
 		}
 		else if (strcmp(argv[argi], "--offset-selectsong") == 0)
 		{
@@ -1143,9 +1249,9 @@ int main(int argc, char **argv)
 		}
 		else if (strcmp(argv[argi], "--find-freespace") == 0)
 		{
-			if (argi + 2 >= argc)
+			if (argi + 3 != argc)
 			{
-				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				fprintf(stderr, "Error: Too few/more arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
 			ul = strtoul(argv[argi + 2], &strtol_endp, 0);

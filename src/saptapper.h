@@ -59,6 +59,8 @@ private:
 
 	std::string tag_gsfby;
 
+	bool quiet;
+
 public:
 	Saptapper() :
 		rom(NULL),
@@ -76,7 +78,8 @@ public:
 		manual_offset_m4a_init(GSF_INVALID_OFFSET),
 		manual_offset_m4a_vsync(GSF_INVALID_OFFSET),
 		manual_offset_m4a_songtable(GSF_INVALID_OFFSET),
-		manual_offset_gsf_driver(GSF_INVALID_OFFSET)
+		manual_offset_gsf_driver(GSF_INVALID_OFFSET),
+		quiet(true)
 	{
 	}
 
@@ -141,6 +144,11 @@ public:
 	inline void set_tag_gsfby(const std::string& gsfby)
 	{
 		this->tag_gsfby = gsfby;
+	}
+
+	inline void set_quiet(bool quiet)
+	{
+		this->quiet = quiet;
 	}
 
 	static inline bool is_gba_rom_address(uint32_t address)

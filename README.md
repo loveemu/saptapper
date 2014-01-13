@@ -13,6 +13,9 @@ Syntax: saptapper <GBA Files>
 --help
   : Show this help
 
+-v, --verbose
+  : Output ripping info to STDOUT
+
 --offset-selectsong [0xXXXXXXXX]
   : Specify the offset of sappy_selectsong function
 
