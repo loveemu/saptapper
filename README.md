@@ -30,3 +30,6 @@ Syntax: saptapper <GBA Files>
 
 --tag-gsfby [name]
   : Specify the nickname of GSF ripper
+
+--find-freespace [ROM.gba] [size]
+  : Find free space and quit

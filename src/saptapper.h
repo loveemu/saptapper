@@ -143,16 +143,13 @@ public:
 		this->tag_gsfby = gsfby;
 	}
 
-private:
-	bool is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index);
-
-	inline bool is_gba_rom_address(uint32_t address)
+	static inline bool is_gba_rom_address(uint32_t address)
 	{
 		uint8_t region = (address >> 24) & 0xFE;
 		return (region == 8);
 	}
 
-	inline uint32_t gba_address_to_offset(uint32_t address)
+	static inline uint32_t gba_address_to_offset(uint32_t address)
 	{
 		if (!is_gba_rom_address(address)) {
 			//fprintf(stderr, "Warning: the address $%08X is not ROM address\n", address);
@@ -160,10 +157,13 @@ private:
 		return address & 0x01FFFFFF;
 	}
 
-	inline uint32_t gba_offset_to_address(uint32_t offset)
+	static inline uint32_t gba_offset_to_address(uint32_t offset)
 	{
 		return 0x08000000 | (offset & 0x01FFFFFF);
 	}
+
+private:
+	bool is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index);
 };
 
 #endif

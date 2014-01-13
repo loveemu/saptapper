@@ -984,6 +984,7 @@ void printUsage(const char *cmd)
 		"--offset-init [0xXXXXXXXX]", "Specify the offset of sappy_init function",
 		"--offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
 		"--tag-gsfby [name]", "Specify the nickname of GSF ripper",
+		"--find-freespace [ROM.gba] [size]", "Find free space and quit",
 	};
 
 	printf("%s %s\n", APP_NAME, APP_VER);
@@ -1139,6 +1140,40 @@ int main(int argc, char **argv)
 			}
 			app.set_tag_gsfby(argv[argi + 1]);
 			argi++;
+		}
+		else if (strcmp(argv[argi], "--find-freespace") == 0)
+		{
+			if (argi + 2 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 2], &strtol_endp, 0);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+
+			// load ROM file
+			std::string rom_path(argv[argi + 1]);
+			if (!app.load_rom_file(rom_path))
+			{
+				fprintf(stderr, "Error: %s - Could not be loaded\n", rom_path.c_str());
+				return EXIT_FAILURE;
+			}
+
+			// find free space
+			uint32_t offset = app.find_free_space(ul);
+			if (offset == GSF_INVALID_OFFSET)
+			{
+				fprintf(stderr, "Error: Insufficient space found\n");
+				return EXIT_FAILURE;
+			}
+			printf("0x%08X\n", Saptapper::gba_offset_to_address(offset));
+
+			argi++;
+			return EXIT_SUCCESS;
 		}
 		else
 		{
