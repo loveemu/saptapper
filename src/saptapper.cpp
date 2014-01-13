@@ -38,6 +38,7 @@
 #include <unistd.h>
 #define _chdir(s)	chdir((s))
 #define _mkdir(s)	mkdir((s), 0777)
+#define _rmdir(s)	rmdir((s))
 #endif
 
 // example:
@@ -297,6 +298,41 @@ int Saptapper::isduplicate(uint8_t *rom, uint32_t sappyoffset, int num)
 	return 0;
 }
 
+const char* Saptapper::get_gsflib_error(EGsfLibResult gsflibstat)
+{
+	switch (gsflibstat)
+	{
+	case GSFLIB_OK:
+		return "Operation finished successfully";
+
+	case GSFLIB_NOMAIN:
+		return "sappy_main not found";
+
+	case GSFLIB_NOSELECT:
+		return "sappy_selectsongbynum not found";
+
+	case GSFLIB_NOINIT:
+		return "sappy_init not found";
+
+	case GSFLIB_NOVSYNC:
+		return "sappy_vsync not found";
+
+	case GSFLIB_NOSPACE:
+		return "Insufficient space found";
+
+	case GSFLIB_ZLIB_ERR:
+		return "GSFLIB zlib compression error";
+
+	case GSFLIB_INFILE_E:
+		return "File read error";
+
+	case GSFLIB_OTFILE_E:
+		return "File write error";
+
+	default:
+		return "Undefined error";
+	}
+}
 
 Saptapper::EGsfLibResult Saptapper::dogsflib(const char *from, const char *to)
 {
@@ -328,7 +364,7 @@ Saptapper::EGsfLibResult Saptapper::dogsflib(const char *from, const char *to)
 
 
 	minigsfcount = 0;
-	fprintf(stderr, "%s: ", to);
+	//fprintf(stderr, "%s: ", to);
 
 	f = fopen(from,"rb");
 	if (!f) {
@@ -610,17 +646,6 @@ lookforspace:
 		}
 	}
 
-	_mkdir(s);
-
-	if (!isdir(s))
-	{
-		printf("Directory %s could not be created\n", s);
-		return GSFLIB_DIR_ERR;
-	}
-
-	_chdir(s);
-
-
 	//  fprintf(stdout, "uncompressed: %ld bytes\n", ucl);
 	//fflush(stdout);
 
@@ -629,234 +654,103 @@ lookforspace:
 		return GSFLIB_OTFILE_E;
 	}
 
-#if 0
-	cl = MAX_GBA_ROM_SIZE;
-	zul = cl;
-	r = compress2(compbuf, &zul, uncompbuf, ucl + 12, 1);
-	cl = zul;
-	if (r != Z_OK)
-	{
-		/*fprintf(stderr,"zlib compress2() failed (%d)\n", r);*/
-		return GSFLIB_ZLIB_ERR;
-	}
-
-
-
-
-	//  fprintf(stdout, "compressed: %ld bytes\n", cl);
-	//  fflush(stdout);
-
-	f = fopen(to, "wb");
-	if (!f)
-	{
-		perror(to);
-		return GSFLIB_OTFILE_E;
-	}
-
-	//#define WriteRom
-#ifdef WriteRom
-	fwrite(rom, 1, rom_size, f);
-	fclose(f);
-	// fprintf(stderr, "Writing normal rom file\n");
-	return GSFLIB_ROM_WR;
-#endif
-//GSFLIB_OTFILE_E
-	fputc('P', f);
-	fputc('S', f);
-	fputc('F', f);
-	fputc(0x22, f);
-	fput4l(0, f);
-	fput4l(cl, f);
-	ccrc = crc32(crc32(0L, Z_NULL, 0), compbuf, cl);
-	fput4l(ccrc, f);
-	fwrite(compbuf, 1, cl, f);
-	fclose(f);
-#endif
-
-	fprintf(stderr, "ok\n");
-
-	if (bat)
-	{
-		fprintf(bat, "cd \"%s\"\n", s);
-		fprintf(bat, "gsfopt -l *.minigsf\n");
-		//	fprintf(bat, "del \"%s\".gsflib\n", s);
-		//	fprintf(bat, "ren \"%s\"-0000.gsflib \"%s\".gsflib\n", s, s);
-		fprintf(bat, "cd ..\n");
-	}
+	//fprintf(stderr, "ok\n");
 
 	return GSFLIB_OK;
 }
 
-
-
-
-int Saptapper::main(int argc, char **argv)
+bool Saptapper::make_gsf_set(const std::string& rom_path)
 {
-	// TODO: this tool is probably not reentrant, I recommend not to pass multiple files at the moment.
-
+	bool result;
+	EGsfLibResult gsflibstat = GSFLIB_OK;
 	std::map<std::string, std::string> tags;
-	char s[1000];
-	char gsflibname[1000];
-	char minigsfname[1000];
-	char nickname[64];
-	int i, j, k;
-	int errors = 0;
-	//  int count;
-	EGsfLibResult dogsf = GSFLIB_OK;
-	FILE *log = NULL;
-	//  unsigned long offset;
-	int size;
-	if(argc < 2){
-		fprintf(stderr,"usage: %s <GBA Files>\n", argv[0]);
-		return 1;
-	}
-	//  size = atoi(argv[3]);
-	//  count = atoi(argv[4]);
-	//  offset = strtol(argv[2], NULL, 16);
 
-	log = fopen("saptapper.txt", "w");
-	bat = fopen("optimize.bat", "w");
+	// get separator positions
+	const char *c_rom_path = rom_path.c_str();
+	const char *c_rom_base = path_findbase(c_rom_path);
+	const char *c_rom_ext = path_findext(c_rom_path);
+	// extract directory path and filename
+	std::string rom_dir = rom_path.substr(0, c_rom_base - c_rom_path);
+	std::string rom_basename = rom_path.substr(c_rom_base - c_rom_path,
+		(c_rom_ext != NULL) ? (c_rom_ext - c_rom_base) : std::string::npos);
+	// construct some new paths
+	std::string gsf_dir = rom_dir + rom_basename;
+	std::string gsflib_name = rom_basename + ".gsflib";
+	std::string gsflib_path = gsf_dir + PATH_SEPARATOR_STR + gsflib_name;
 
-	// if(strcmp(argv[1],"-m"))
-	// {
-	//	  manual = 1;
-	//  else
-	manual = 0;
-
-
-
-
-	/*
-	fprintf(stderr, "argc = %d\n", argc);
-	for (j = 2; j < argc; j++)
-	fprintf(stderr, "argv[%d] = %s\n", j, argv[j]);
-	*/
-
-	for (j = 1; j < argc; j++)
+	// create output directory
+	_mkdir(gsf_dir.c_str());
+	if (!path_isdir(gsf_dir.c_str()))
 	{
-		//if (((fileattr & FILE_ATTRIBUTE_DIRECTORY)) || (fileattr == -1))
+		fprintf(stderr, "Error: %s - Directory could not be created\n", gsf_dir.c_str());
+		return false;
+	}
+
+	// create gsflib
+	gsflibstat = dogsflib(rom_path.c_str(), gsflib_path.c_str());
+	if (gsflibstat != GSFLIB_OK)
+	{
+		fprintf(stderr, "Error: %s - %s\n", rom_path.c_str(), get_gsflib_error(gsflibstat));
+		_rmdir(gsf_dir.c_str());
+		return false;
+	}
+
+	// create minigsfs
+	int minigsferrors = 0;
+	int size = (minigsfcount > 255) ? 2 : 1;
+	tags["_lib"] = gsflib_name;
+	if (manual == 2)
+	{
+		char nickname[64];
+		printf("Enter your name for GSFby purposes.\n");
+		printf("The GSFBy tag will look like,\n");
+		printf("Saptapper, with help of <your name here>\n");
+		gets(nickname);
+		if(!strcmp(nickname, "CaitSith2"))
+		{
+			tags["gsfby"] = "Caitsith2";
+		}
+		else
+		{
+			tags["gsfby"]= std::string("Saptapper, with help of ") + nickname;
+		}
+		manual = 1;
+	}
+	else
+	{
+		tags["gsfby"] = "Saptapper";
+	}
+	result = false;
+	for (int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
+	{
+		char minigsfname[PATH_MAX];
+
+		sprintf(minigsfname, "%s.%.4X.minigsf", rom_basename.c_str(), minigsfindex);
+		std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
+
+		if (isduplicate(&uncompbuf[12], sappyoffset, minigsfindex) == 0)
+		{
+			if (make_minigsf(minigsf_path, minigsfoffset, size, minigsfindex, tags))
+			{
+				result = true;
+			}
+			else
+			{
+				minigsferrors++;
+			}
+		}
+		//else
 		//{
-		//	printf("Directory %s could not be created\n", s);
-		//	continue;
+		//	fprintf(stderr, "|");
 		//}
-		k = (int)(strchr(argv[j], '.') - argv[j]); 
-		memset(gsflibname, 0, sizeof(gsflibname));
-		strncpy(gsflibname, argv[j], k);
-		strcpy(gsflibname + k, ".gsflib");
-
-		//sprintf(s, "%s.gba", argv[j]);
-		//sprintf(t, "%s.gsflib", argv[j]);
-		dogsf = dogsflib(argv[j], gsflibname);
-		if (dogsf)
-		{
-			fprintf(stderr, "error\n");
-			switch (dogsf)
-			{
-			case GSFLIB_OTFILE_E:
-			case GSFLIB_ROM_WR:
-			case GSFLIB_ZLIB_ERR:
-				_chdir("..");
-			default:
-				break;
-			}
-			if (log)
-			{
-				switch (dogsf)
-				{
-				case GSFLIB_NOMAIN:
-					fprintf(log, "sappy_main not found in %s\n", argv[j]);
-					break;
-				case GSFLIB_NOINIT:
-					fprintf(log, "sappy_init not found in %s\n", argv[j]);
-					break;
-				case GSFLIB_NOVSYNC:
-					fprintf(log, "sappy_vsync not found in %s\n", argv[j]);
-					break;
-				case GSFLIB_NOSPACE:
-					fprintf(log, "Insufficient space found in %s\n", argv[j]);
-					break;
-				case GSFLIB_ZLIB_ERR:
-					fprintf(log, "GSFLIB zlib compression error\n");
-					break;
-				case GSFLIB_OTFILE_E:
-					fprintf(log, "Error Writing file %s\n", gsflibname);
-					break;
-				case GSFLIB_NOSELECT:
-				case GSFLIB_INFILE_E:
-				default:
-					break;
-				}
-			}
-
-			continue;
-		}
-		if (minigsfcount > 255)
-		{
-			size = 2;
-		}
-		else
-		{
-			size = 1;
-		}
-
-		tags["_lib"] = gsflibname;
-		if (manual == 2)
-		{
-			printf("Enter your name for GSFby purposes.\n");
-			printf("The GSFBy tag will look like,\n");
-			printf("Saptapper, with help of <your name here>\n");
-			gets(nickname);
-			if(!strcmp(nickname, "CaitSith2"))
-			{
-				tags["gsfby"] = "Caitsith2";
-			}
-			else
-			{
-				tags["gsfby"]= std::string("Saptapper, with help of ") + nickname;
-			}
-			manual = 1;
-		}
-		else
-		{
-			tags["gsfby"] = "Saptapper";
-		}
-		for (i = 0; i < minigsfcount; i++)
-		{
-			memset(minigsfname, 0, sizeof(minigsfname));
-			k = (int)(strchr(argv[j], '.') - argv[j]); 
-			strncpy(minigsfname, argv[j], k);
-
-			sprintf(s, "%s.%.4X.minigsf", minigsfname, i);
-			{
-				char *e = s + strlen(s) - 4;
-				if (!strcmp(e, ".gba"))
-				{
-					*e = 0;
-				}
-			}
-
-
-			//  strcat(s, ".gsf");
-			if (isduplicate(&uncompbuf[12], sappyoffset, i) == 0)
-			{
-				errors += make_minigsf(s, minigsfoffset, size, i, tags) ? 0 : 1;
-			}
-			else
-			{
-				fprintf(stderr, "|");
-			}
-		}
-
-		_chdir("..");
-		fprintf(stderr, "\n");
 	}
-	fprintf(stderr, "%d error(s)\n", errors);
-	if (log)
+	//fprintf(stderr, "\n");
+
+	if (minigsferrors > 0)
 	{
-		fclose(log);
-		log = NULL;
+		fprintf(stderr, "%d error(s)\n", minigsferrors);
 	}
-	return 0;
+	return result;
 }
 
 void printUsage(const char *cmd)
@@ -889,6 +783,7 @@ void printUsage(const char *cmd)
 int main(int argc, char **argv)
 {
 	Saptapper app;
+	bool result;
 	int argnum;
 	int argi;
 
@@ -917,5 +812,10 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	return app.main(argc, argv);
+	result = true;
+	for (; argi < argc; argi++)
+	{
+		result = result && app.make_gsf_set(argv[argi]);
+	}
+	return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }

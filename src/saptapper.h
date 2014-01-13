@@ -32,9 +32,7 @@ public:
 		GSFLIB_NOSPACE,
 		GSFLIB_ZLIB_ERR,
 		GSFLIB_INFILE_E,
-		GSFLIB_ROM_WR,
 		GSFLIB_OTFILE_E,
-		GSFLIB_DIR_ERR,
 	};
 
 public:
@@ -57,12 +55,9 @@ public:
 	uint32_t sappyoffset;
 	int manual;
 
-	FILE *bat;
-
 public:
 	Saptapper() :
-		manual(0),
-		bat(NULL)
+		manual(0)
 	{
 		compbuf = new uint8_t[MAX_GSF_EXE_SIZE];
 		uncompbuf = new uint8_t[MAX_GSF_EXE_SIZE];
@@ -70,8 +65,6 @@ public:
 
 	~Saptapper()
 	{
-		delete[] compbuf;
-		delete[] uncompbuf;
 	}
 
 	static void put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size);
@@ -79,8 +72,10 @@ public:
 	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size, std::map<std::string, std::string>& tags);
 	static bool make_minigsf(const std::string& gsf_path, uint32_t offset, size_t size, uint32_t num, std::map<std::string, std::string>& tags);
 
+	static const char* get_gsflib_error(EGsfLibResult error_type);
 	EGsfLibResult dogsflib(const char *from, const char *to);
-	int main(int argc, char **argv);
+
+	bool make_gsf_set(const std::string& rom_path);
 
 private:
 	int isduplicate(uint8_t *rom, uint32_t sappyoffset, int num);

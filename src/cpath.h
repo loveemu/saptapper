@@ -6,18 +6,24 @@
 #define CPATH_H_INCLUDED
 
 #include <string.h>
+#include <stdlib.h>
+#include <limits.h>
 
 #ifdef _WIN32
 #pragma comment(lib, "shlwapi")
+#include <windows.h>
 #include <shlwapi.h>
-
 #include <sys/stat.h>
 #include <direct.h>
+#ifndef PATH_MAX
+#define PATH_MAX	_MAX_PATH
+#endif
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <errno.h>
 #endif
 
 #ifndef __cplusplus
@@ -42,7 +48,15 @@ typedef int bool;
 #endif
 #endif /* !INLINE */
 
-static INLINE char *path_findbase(char *path)
+#ifdef _WIN32
+#define PATH_SEPARATOR_CHAR	'\\'
+#define PATH_SEPARATOR_STR	"\\"
+#else
+#define PATH_SEPARATOR_CHAR	'/'
+#define PATH_SEPARATOR_STR	"/"
+#endif
+
+static INLINE const char *path_findbase(const char *path)
 {
 #ifdef _WIN32
 	return PathFindFileNameA(path);
@@ -54,7 +68,7 @@ static INLINE char *path_findbase(char *path)
 		return NULL;
 	}
 
-	pslash = strrchr(path, '/');
+	pslash = strrchr(path, PATH_SEPARATOR_CHAR);
 	if (pslash != NULL)
 	{
 		return pslash + 1;
@@ -66,7 +80,7 @@ static INLINE char *path_findbase(char *path)
 #endif
 }
 
-static INLINE char *path_findext(char *path)
+static INLINE const char *path_findext(const char *path)
 {
 #ifdef _WIN32
 	return PathFindExtensionA(path);
@@ -80,7 +94,7 @@ static INLINE char *path_findext(char *path)
 	}
 
 	pdot = strrchr(path, '.');
-	pslash = strrchr(path, '/');
+	pslash = strrchr(path, PATH_SEPARATOR_CHAR);
 	if (pdot != NULL && (pslash == NULL || pdot > pslash))
 	{
 		return pdot;
@@ -115,7 +129,7 @@ static INLINE void path_stripext(char *path)
 #ifdef _WIN32
 	PathRemoveExtensionA(path);
 #else
-	char *pdot = path_findext(path);
+	char *pdot = (char*) path_findext(path);
 	if (pdot != NULL)
 	{
 		*pdot = '\0';
@@ -123,7 +137,7 @@ static INLINE void path_stripext(char *path)
 #endif
 }
 
-static INLINE bool isdir(const char *path)
+static INLINE bool path_isdir(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) == 0)
@@ -138,6 +152,37 @@ static INLINE bool isdir(const char *path)
 		}
 	}
 	return false;
+}
+
+static char *path_getabspath(const char *path, char *absolute_path)
+{
+#ifdef _WIN32
+	char *szFilePart;
+	return GetFullPathNameA(path, PATH_MAX, absolute_path, &szFilePart) != 0 ? absolute_path : NULL;
+#else
+	// realpath() can resolve path only if the path exists. For example,
+	// "/tmp/non-existing-directory-will-fail/../foo.bar" will return wrong result.
+	// Therefore, we return just a simple absolute path here. What a pity.
+	if (path == NULL || absolute_path == NULL)
+	{
+		errno = EINVAL;
+		return NULL;
+	}
+	if (path[0] == '/')
+	{
+		strcpy(absolute_path, path);
+	}
+	else
+	{
+		size_t len;
+		getcwd(absolute_path, PATH_MAX);
+		len = strlen(absolute_path);
+		strcpy(&absolute_path[len], PATH_SEPARATOR_STR);
+		len += strlen(PATH_SEPARATOR_STR);
+		strcat(&absolute_path[len], path);
+	}
+	return absolute_path;
+#endif
 }
 
 #endif /* !CPATH_H_INCLUDED */
