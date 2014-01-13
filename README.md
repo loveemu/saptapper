@@ -1,7 +1,11 @@
 Saptapper
 =========
 
-My rewrite of Caitsith2's automated GSF ripper tool.
+Automated GSF ripper tool created by Caitsith2, revised by loveemu.
+<https://github.com/loveemu/saptapper>
+
+This modified version aims to provide readable and customizable code.
+Additionally, it provides some extra options that might be useful.
 
 Usage
 -----
@@ -11,7 +15,7 @@ Syntax: saptapper <GBA Files>
 ### Options ###
 
 --help
-  : Show this help
+  : Show help
 
 -v, --verbose
   : Output ripping info to STDOUT
