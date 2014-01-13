@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-12]"
+#define APP_VER		"[2014-01-13]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -687,10 +687,10 @@ uint32_t Saptapper::find_free_space(size_t size, uint8_t filler)
 			{
 				max_space_offset = space_offset;
 				max_space_size = space_size;
-				if (max_space_size >= size)
-				{
-					break;
-				}
+				//if (max_space_size >= size)
+				//{
+				//	break;
+				//}
 			}
 			space_size = 0;
 			offset += 4 - (offset % 4);
