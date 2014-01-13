@@ -40,3 +40,17 @@ Syntax: saptapper <GBA Files>
 
 --find-freespace [ROM.gba] [size]
   : Find free space and quit
+
+Note
+----
+
+Most of the games using the sappy driver are ripped completely and automatically with
+this program. The only manual step left, is sorting and optimizing the set.
+
+If saptapper was unable to rip the game properly, but did find one of the sappy driver
+functions identifying it as being sappy compatible, an error will be written to STDERR,
+identifying what function it was not able to find.
+
+Before submitting a gsf set that has been ripped, with or without saptapper, please at the 
+minimum optimize the set first.  Ideally, all sfxs/voices should be removed, all 
+music/jingles kept.
