@@ -1026,7 +1026,7 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 	{
 		char minigsfname[PATH_MAX];
 
-		sprintf(minigsfname, "%s.%.4X.minigsf", rom_basename.c_str(), minigsfindex);
+		sprintf(minigsfname, "%s.%04d.minigsf", rom_basename.c_str(), minigsfindex);
 		std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
 
 		if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
@@ -1283,6 +1283,7 @@ int main(int argc, char **argv)
 		}
 		else if (strcmp(argv[argi], "--largespace") == 0)
 		{
+			// experimental: it's secret to everybody :)
 			app.set_prefer_larger_free_space(true);
 		}
 		else
