@@ -7,6 +7,11 @@
 ** It's available at http://www.gzip.org/zlib/
 */
 
+#define APP_NAME	"Saptapper"
+#define APP_VER		"[2014-01-13]"
+#define APP_DESC	"Automated GSF ripper tool"
+#define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -687,6 +692,8 @@ lookforspace:
 
 int Saptapper::main(int argc, char **argv)
 {
+	// TODO: this tool is probably not reentrant, I recommend not to pass multiple files at the moment.
+
 	std::map<std::string, std::string> tags;
 	char s[1000];
 	char gsflibname[1000];
@@ -852,8 +859,63 @@ int Saptapper::main(int argc, char **argv)
 	return 0;
 }
 
+void printUsage(const char *cmd)
+{
+	const char *availableOptions[] = {
+		"--help", "Show this help",
+	};
+
+	printf("%s %s\n", APP_NAME, APP_VER);
+	printf("======================\n");
+	printf("\n");
+	printf("%s. Created by %s.\n", APP_DESC, APP_AUTHOR);
+	printf("\n");
+	printf("Usage\n");
+	printf("-----\n");
+	printf("\n");
+	printf("Syntax: %s <GBA Files>\n", cmd);
+	printf("\n");
+	printf("### Options ###\n");
+	printf("\n");
+
+	for (int i = 0; i < sizeof(availableOptions) / sizeof(availableOptions[0]); i += 2)
+	{
+		printf("%s\n", availableOptions[i]);
+		printf("  : %s\n", availableOptions[i + 1]);
+		printf("\n");
+	}
+}
+
 int main(int argc, char **argv)
 {
 	Saptapper app;
+	int argnum;
+	int argi;
+
+	argi = 1;
+	while (argi < argc && argv[argi][0] == '-')
+	{
+		if (strcmp(argv[argi], "--help") == 0)
+		{
+			printUsage(argv[0]);
+			return EXIT_SUCCESS;
+		}
+		else
+		{
+			fprintf(stderr, "Error: Unknown option \"%s\"\n", argv[argi]);
+			return EXIT_FAILURE;
+		}
+		argi++;
+	}
+
+	argnum = argc - argi;
+	if (argnum == 0)
+	{
+		fprintf(stderr, "Error: No input files.\n");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "Run \"%s --help\" for help.\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
 	return app.main(argc, argv);
 }
