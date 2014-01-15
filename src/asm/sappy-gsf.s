@@ -1,7 +1,8 @@
-@ Disassembly of relocatable sapphire block
+@ Relocatable sapphire block
 
-	.global     _start
-_start:
+	.global     main
+
+main:
 	.align
 	.code 32
 
@@ -59,7 +60,7 @@ sub_00000a0:                            @ IRQ handler
 	bx	r0                      @ back to USER funciton
 
 dword_00000D4:
-	.word	0x00FFFFFF
+	.word	0xFFFFFFFF
 
 dword_00000D8:                          @ sappy_SelectSongByNum function
 	.word	0x08038159
