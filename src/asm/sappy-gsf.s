@@ -2,28 +2,29 @@
 
 	.global     main
 
+	.ascii	"**DRIVER_START**"
+
 main:
 	.align
 	.code 32
 
 	stmdb	sp!, {pc}
 	ldmia	sp!, {r0}
-	mov	r1, #0x50
+	mov	r1, #0x60
 
-loc_000000C:                            @ save watermark from gsfopt
+loc_readmark:                           @ save watermark from gsfopt
 	ldr	r2, [r0]
 	add	r0, r0, #4
 	sub	r1, r1, #4
 	cmp	r1, #0
-	bne	loc_000000C
-	b	loc_0000054
+	bne	loc_readmark
+	b	loc_init
 
-byte_0000024:
-	.ascii	"Sappy Driver Ripper by CaitSith2\\Zoopd, (c) 2004"
+	.string	"Sappy Driver Ripper by CaitSith2\\Zoopd, (c) 2004, loveemu 2014."
 
-loc_0000054:
+loc_init:
 	stmdb	sp!, {lr}
-	ldr	r0, dword_00000E0       @ call sappy_SoundInit
+	ldr	r0, sappy_soundinit
 	bl	bx_r0
 	ldr	r0, num_3007FFC
 	stmdb	sp!, {pc}
@@ -36,20 +37,20 @@ loc_0000054:
 	mov	r1, #1
 	str	r1, [r0, #0x200]        @ set IE (request V-Blank interrupt)
 	str	r1, [r0, #0x208]        @ set IME (activate interrupts)
-	ldr	r0, dword_00000F4       @ song index
-	ldr	r1, dword_00000D8
-	bl	bx_r1                   @ call sappy_SelectSongByNum
+	ldr	r0, num_songindex
+	ldr	r1, sappy_selectsong
+	bl	bx_r1
 
-loc_0000098:
+loc_main_loop:
 	swi	0x00020000              @ Halt
-	b	loc_0000098
+	b	loc_main_loop
 
-sub_00000a0:                            @ IRQ handler
+irq_handler:
 	stmdb	sp!, {lr}
-	ldr	r0, dword_00000E4
-	bl	bx_r0                   @ call sappy_VSync
-	ldr	r0, dword_00000DC
-	bl	bx_r0                   @ call sappy_SoundMain
+	ldr	r0, sappy_vsync
+	bl	bx_r0
+	ldr	r0, sappy_soundmain
+	bl	bx_r0
 	mov	r0, #0x4000000
 	mov	r1, #0x10000
 	add	r1, r1, #1
@@ -59,25 +60,38 @@ sub_00000a0:                            @ IRQ handler
 	ldmia	sp!, {r0}
 	bx	r0                      @ back to USER funciton
 
-dword_00000D4:
+num_FFFFFFFF:
 	.word	0xFFFFFFFF
 
-dword_00000D8:                          @ sappy_SelectSongByNum function
-	.word	0x08038159
-dword_00000DC:                          @ sappy_SoundMain function
-	.word	0x0803814D
-dword_00000E0:                          @ sappy_SoundInit function
-	.word	0x080380D5
-dword_00000E4:                          @ sappy_VSync function
-	.word	0x08037A89
+sappy_selectsong:
+	.word	0
+
+sappy_soundmain:
+	.word	0
+
+sappy_soundinit:
+	.word	0
+
+sappy_vsync:
+	.word	0
 
 bx_r0:
-		bx	r0
+	cmp	r0, #0
+	beq	quit_sub
+	bx	r0
 
 bx_r1:
-		bx	r1
+	cmp	r1, #0
+	beq	quit_sub
+	bx	r1
+
+quit_sub:
+	bx	lr
 
 num_3007FFC:                            @ address of pointer to user IRQ handler
 	.word	0x03007FFC
-dword_00000F4:                          @ song index
-	.word	0x00000030
+
+num_songindex:
+	.word	1
+
+	.ascii	"***DRIVER_END***"
