@@ -42,6 +42,12 @@ private:
 	uint8_t* rom_exe;
 	size_t rom_size;
 
+	// create backup of driver location
+	uint32_t rom_patch_entrypoint_backup;	// ARM B _start
+	uint8_t* rom_patch_backup;
+	uint32_t rom_patch_offset;
+	size_t rom_patch_size;
+
 	uint32_t offset_m4a_main;
 	uint32_t offset_m4a_selectsong;
 	uint32_t offset_m4a_init;
@@ -66,7 +72,11 @@ public:
 	Saptapper() :
 		rom(NULL),
 		rom_exe(NULL),
-		rom_size(GSF_INVALID_OFFSET),
+		rom_size(0),
+		rom_patch_entrypoint_backup(0),
+		rom_patch_backup(NULL),
+		rom_patch_offset(GSF_INVALID_OFFSET),
+		rom_patch_size(0),
 		offset_m4a_main(GSF_INVALID_OFFSET),
 		offset_m4a_selectsong(GSF_INVALID_OFFSET),
 		offset_m4a_init(GSF_INVALID_OFFSET),
@@ -178,6 +188,9 @@ public:
 	}
 
 private:
+	bool install_driver(uint8_t* driver_block, uint32_t offset, size_t size);
+	void uninstall_driver(void);
+
 	bool is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index);
 };
 

@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-13]"
+#define APP_VER		"[2014-01-15]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -310,11 +310,58 @@ void Saptapper::close_rom(void)
 {
 	if (rom_exe != NULL)
 	{
+		uninstall_driver();
+
 		delete [] rom_exe;
 		rom_exe = NULL;
 		rom = NULL;
 	}
 	rom_size = 0;
+}
+
+bool Saptapper::install_driver(uint8_t* driver_block, uint32_t offset, size_t size)
+{
+	uninstall_driver();
+
+	// check range, alignments, etc.
+	if (driver_block == NULL || (offset % 4) != 0 || size == 0 ||
+		(offset + size) > rom_size || rom == NULL || rom_size < 4)
+	{
+		return false;
+	}
+
+	// allocate memory for backup
+	rom_patch_backup = new uint8_t[size];
+	if (rom_patch_backup == NULL)
+	{
+		return false;
+	}
+
+	// make a backup of unpatched ROM
+	rom_patch_entrypoint_backup = mget4l(&rom[0]);
+	memcpy(rom_patch_backup, &rom[offset], size);
+	rom_patch_offset = offset;
+	rom_patch_size = size;
+
+	// patch ROM
+	mput4l(0xEA000000 | (((offset - 8) / 4) & 0xFFFFFF), &rom[0]);
+	memcpy(&rom[offset], driver_block, size);
+
+	return true;
+}
+
+void Saptapper::uninstall_driver(void)
+{
+	if (rom_patch_backup != NULL)
+	{
+		memcpy(&rom[rom_patch_offset], rom_patch_backup, rom_patch_size);
+		mput4l(rom_patch_entrypoint_backup, &rom[0]);
+
+		delete [] rom_patch_backup;
+		rom_patch_backup = NULL;
+	}
+	rom_patch_offset = GSF_INVALID_OFFSET;
+	rom_patch_size = 0;
 }
 
 uint32_t Saptapper::find_m4a_selectsong(void)
