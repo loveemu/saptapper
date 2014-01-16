@@ -24,6 +24,9 @@ Syntax: saptapper <GBA Files>
 -v, --verbose
   : Output ripping info to STDOUT
 
+-n [count]
+  : Set minigsf count
+
 --gsf-driver-file [driver.bin] [0xXXXX]
   : Specify relocatable GSF driver block and minigsf offset
 

@@ -66,6 +66,7 @@ private:
 	uint8_t* manual_gsf_driver;
 	size_t manual_gsf_driver_size;
 	size_t manual_minigsf_offset;
+	uint32_t manual_minigsf_count;
 
 	std::string tag_gsfby;
 
@@ -97,6 +98,7 @@ public:
 		manual_gsf_driver(NULL),
 		manual_gsf_driver_size(0),
 		manual_minigsf_offset(GSF_INVALID_OFFSET),
+		manual_minigsf_count(GSF_INVALID_OFFSET),
 		quiet(true),
 		prefer_larger_free_space(false)
 	{
@@ -142,6 +144,11 @@ public:
 	inline void set_gsf_driver_offset(uint32_t offset)
 	{
 		manual_offset_gsf_driver = offset;
+	}
+
+	inline void set_minigsf_count(uint32_t count)
+	{
+		manual_minigsf_count = count;
 	}
 
 	bool set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset);

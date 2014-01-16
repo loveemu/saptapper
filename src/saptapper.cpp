@@ -1066,9 +1066,21 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 
 	// determine minigsf constants
 	uint32_t minigsfoffset = offset_minigsf_number;
-	unsigned int minigsfcount = (offset_m4a_songtable != GSF_INVALID_OFFSET) ? get_song_count(offset_m4a_songtable) : 0;
+	unsigned int minigsfcount = 0;
 	unsigned int minigsferrors = 0;
 	unsigned int minigsfdupes = 0;
+
+	if (manual_minigsf_count == GSF_INVALID_OFFSET)
+	{
+		if (offset_m4a_songtable != GSF_INVALID_OFFSET)
+		{
+			minigsfcount = get_song_count(offset_m4a_songtable);
+		}
+	}
+	else
+	{
+		minigsfcount = manual_minigsf_count;
+	}
 
 	// show address info
 	if (!quiet)
@@ -1221,6 +1233,7 @@ void printUsage(const char *cmd)
 	const char *availableOptions[] = {
 		"--help", "Show this help",
 		"-v, --verbose", "Output ripping info to STDOUT",
+		"-n [count]", "Set minigsf count",
 		"--gsf-driver-file [driver.bin] [0xXXXX]", "Specify relocatable GSF driver block and minigsf offset",
 		"--offset-gsf-driver [0xXXXXXXXX]", "Specify the offset of GSF driver block",
 		"--offset-selectsong [0xXXXXXXXX]", "Specify the offset of sappy_selectsong function",
@@ -1276,6 +1289,22 @@ int main(int argc, char **argv)
 		else if (strcmp(argv[argi], "-v") == 0 || strcmp(argv[argi], "--verbose") == 0)
 		{
 			app.set_quiet(false);
+		}
+		else if (strcmp(argv[argi], "-n") == 0)
+		{
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			ul = strtoul(argv[argi + 1], &strtol_endp, 0);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			app.set_minigsf_count(ul);
+			argi++;
 		}
 		else if (strcmp(argv[argi], "--gsf-driver-file") == 0)
 		{
