@@ -890,16 +890,8 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path)
 	// determine minigsf offset
 	offset_minigsf_number = offset_gsf_driver + 0x118;
 
-	// create backup of driver location
-	uint8_t* rom_backup = new uint8_t[gsf_driver_size];
-	uint32_t rom_first_instr = mget4l(&rom[0]);
-	memcpy(rom_backup, &rom[offset_gsf_driver], gsf_driver_size);
-
-	// put driver block temporarily
-	memcpy(&rom[offset_gsf_driver], gsf_driver_block, gsf_driver_size);
-	// change entrypoint (ARM B instruction)
-	uint32_t new_arm_b_instr = 0xEA000000 | (((offset_gsf_driver - 8) / 4) & 0xFFFFFF);
-	mput4l(new_arm_b_instr, &rom[0]);
+	// install driver temporarily
+	install_driver(gsf_driver_block, offset_gsf_driver, gsf_driver_size);
 
 	// create gsflib file
 	put_gsf_exe_header(rom_exe, GBA_ENTRYPOINT, GBA_ENTRYPOINT, rom_size);
@@ -908,10 +900,8 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path)
 		gsflibstat = GSFLIB_OTFILE_E;
 	}
 
-	// remove driver block
-	mput4l(rom_first_instr, &rom[0]);
-	memcpy(&rom[offset_gsf_driver], rom_backup, gsf_driver_size);
-	delete [] rom_backup;
+	// uninstall driver block
+	uninstall_driver();
 
 	return gsflibstat;
 }
