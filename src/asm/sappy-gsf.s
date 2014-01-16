@@ -1,6 +1,6 @@
 @ Relocatable sapphire block
 
-	.global     main
+	.global	main
 
 	.ascii	"**DRIVER_START**"
 
@@ -10,7 +10,7 @@ main:
 
 	stmdb	sp!, {pc}
 	ldmia	sp!, {r0}
-	mov	r1, #0x60
+	mov	r1, #0x50
 
 loc_readmark:                           @ save watermark from gsfopt
 	ldr	r2, [r0]
@@ -20,7 +20,7 @@ loc_readmark:                           @ save watermark from gsfopt
 	bne	loc_readmark
 	b	loc_init
 
-	.string	"Sappy Driver Ripper by CaitSith2\\Zoopd, (c) 2004, loveemu 2014."
+	.ascii	"Sappy Driver Ripper by CaitSith2\\Zoopd, (c) 2004"
 
 loc_init:
 	stmdb	sp!, {lr}
@@ -39,13 +39,13 @@ loc_init:
 	str	r1, [r0, #0x208]        @ set IME (activate interrupts)
 	ldr	r0, num_songindex
 	ldr	r1, sappy_selectsong
-	bl	bx_r1
+	bl	bx_r1                   @ call sappy_SelectSongByNum
 
 loc_main_loop:
 	swi	0x00020000              @ Halt
 	b	loc_main_loop
 
-irq_handler:
+irq_handler:                            @ IRQ handler
 	stmdb	sp!, {lr}
 	ldr	r0, sappy_vsync
 	bl	bx_r0
@@ -76,19 +76,12 @@ sappy_vsync:
 	.word	0
 
 bx_r0:
-	cmp	r0, #0
-	beq	quit_sub
 	bx	r0
 
 bx_r1:
-	cmp	r1, #0
-	beq	quit_sub
 	bx	r1
 
-quit_sub:
-	bx	lr
-
-num_3007FFC:                            @ address of pointer to user IRQ handler
+num_3007FFC:
 	.word	0x03007FFC
 
 num_songindex:
