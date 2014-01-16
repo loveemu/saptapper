@@ -4,8 +4,7 @@ Saptapper
 Automated GSF ripper tool created by Caitsith2, revised by loveemu.
 <https://github.com/loveemu/saptapper>
 
-This modified version aims to provide readable and customizable code.
-Additionally, it provides some extra options that might be useful.
+This modified version provides some extra options that might be useful.
 
 Downloads
 ---------
@@ -24,6 +23,12 @@ Syntax: saptapper <GBA Files>
 
 -v, --verbose
   : Output ripping info to STDOUT
+
+--gsf-driver-file [driver.bin] [0xXXXX]
+  : Specify relocatable GSF driver block and minigsf offset
+
+--offset-gsf-driver [0xXXXXXXXX]
+  : Specify the offset of GSF driver block
 
 --offset-selectsong [0xXXXXXXXX]
   : Specify the offset of sappy_selectsong function

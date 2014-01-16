@@ -63,6 +63,10 @@ private:
 	uint32_t manual_offset_m4a_songtable;
 	uint32_t manual_offset_gsf_driver;
 
+	uint8_t* manual_gsf_driver;
+	size_t manual_gsf_driver_size;
+	size_t manual_minigsf_offset;
+
 	std::string tag_gsfby;
 
 	bool quiet;
@@ -90,6 +94,9 @@ public:
 		manual_offset_m4a_vsync(GSF_INVALID_OFFSET),
 		manual_offset_m4a_songtable(GSF_INVALID_OFFSET),
 		manual_offset_gsf_driver(GSF_INVALID_OFFSET),
+		manual_gsf_driver(NULL),
+		manual_gsf_driver_size(0),
+		manual_minigsf_offset(GSF_INVALID_OFFSET),
 		quiet(true),
 		prefer_larger_free_space(false)
 	{
@@ -97,6 +104,7 @@ public:
 
 	~Saptapper()
 	{
+		unset_gsf_driver();
 		close_rom();
 	}
 
@@ -135,6 +143,10 @@ public:
 	{
 		manual_offset_gsf_driver = offset;
 	}
+
+	bool set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset);
+	bool set_gsf_driver_file(const std::string& driver_path, uint32_t minigsf_offset);
+	void unset_gsf_driver(void);
 
 	bool load_rom(uint8_t* rom, size_t rom_size);
 	bool load_rom_file(const std::string& rom_path);
