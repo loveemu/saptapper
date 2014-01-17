@@ -169,8 +169,8 @@ public:
 	EGsfLibResult find_m4a_addresses(void);
 	unsigned int get_song_count(uint32_t offset_m4a_songtable);
 
-	EGsfLibResult make_gsflib(const std::string& gsf_path);
-	bool make_gsf_set(const std::string& rom_path);
+	EGsfLibResult make_gsflib(const std::string& gsf_path, bool prefer_gba_rom);
+	bool make_gsf_set(const std::string& rom_path, bool prefer_gba_rom);
 
 	inline void set_tag_gsfby(const std::string& gsfby)
 	{

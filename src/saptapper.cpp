@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-16]"
+#define APP_VER		"[2014-01-17]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -893,7 +893,7 @@ bool Saptapper::is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int so
 	return false;
 }
 
-Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path)
+Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_rom)
 {
 	uint8_t sappyblock[248] =
 	{
@@ -998,11 +998,30 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path)
 	// install driver temporarily
 	install_driver(gsf_driver_block, offset_gsf_driver, gsf_driver_size);
 
-	// create gsflib file
+	// create gba/gsflib file
 	put_gsf_exe_header(rom_exe, GBA_ENTRYPOINT, GBA_ENTRYPOINT, rom_size);
-	if (!exe2gsf(gsf_path, rom_exe, GSF_EXE_HEADER_SIZE + rom_size))
+	if (prefer_gba_rom)
 	{
+		FILE* gba_file = NULL;
+
 		gsflibstat = GSFLIB_OTFILE_E;
+
+		gba_file = fopen(gsf_path.c_str(), "wb");
+		if (gba_file != NULL)
+		{
+			if (fwrite(rom, 1, rom_size, gba_file) == rom_size)
+			{
+				gsflibstat = GSFLIB_OK;
+			}
+			fclose(gba_file);
+		}
+	}
+	else
+	{
+		if (!exe2gsf(gsf_path, rom_exe, GSF_EXE_HEADER_SIZE + rom_size))
+		{
+			gsflibstat = GSFLIB_OTFILE_E;
+		}
 	}
 
 	// uninstall driver block
@@ -1011,7 +1030,7 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path)
 	return gsflibstat;
 }
 
-bool Saptapper::make_gsf_set(const std::string& rom_path)
+bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 {
 	bool result = false;
 	EGsfLibResult gsflibstat = GSFLIB_OK;
@@ -1026,9 +1045,9 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 	std::string rom_basename = rom_path.substr(c_rom_base - c_rom_path,
 		(c_rom_ext != NULL) ? (c_rom_ext - c_rom_base) : std::string::npos);
 	// construct some new paths
-	std::string gsf_dir = rom_dir + rom_basename;
-	std::string gsflib_name = rom_basename + ".gsflib";
-	std::string gsflib_path = gsf_dir + PATH_SEPARATOR_STR + gsflib_name;
+	std::string gsf_dir = rom_dir + (prefer_gba_rom ? "" : rom_basename);
+	std::string gsflib_name = rom_basename + (prefer_gba_rom ? ".gsflib.gba" : ".gsflib");
+	std::string gsflib_path = (gsf_dir.empty() ? "" : gsf_dir + PATH_SEPARATOR_STR) + gsflib_name;
 
 	if (!quiet)
 	{
@@ -1053,16 +1072,19 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 	}
 
 	// create output directory
-	_mkdir(gsf_dir.c_str());
-	if (!path_isdir(gsf_dir.c_str()))
+	if (!gsf_dir.empty())
 	{
-		fprintf(stderr, "Error: %s - Directory could not be created\n", gsf_dir.c_str());
-		close_rom();
-		return false;
+		_mkdir(gsf_dir.c_str());
+		if (!path_isdir(gsf_dir.c_str()))
+		{
+			fprintf(stderr, "Error: %s - Directory could not be created\n", gsf_dir.c_str());
+			close_rom();
+			return false;
+		}
 	}
 
 	// create gsflib
-	gsflibstat = make_gsflib(gsflib_path);
+	gsflibstat = make_gsflib(gsflib_path, prefer_gba_rom);
 
 	// determine minigsf constants
 	uint32_t minigsfoffset = offset_minigsf_number;
@@ -1177,51 +1199,55 @@ bool Saptapper::make_gsf_set(const std::string& rom_path)
 	}
 
 	result = true;
-	for (unsigned int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
+	if (!prefer_gba_rom)
 	{
-		char minigsfname[PATH_MAX];
-
-		sprintf(minigsfname, "%s.%04d.minigsf", rom_basename.c_str(), minigsfindex);
-		std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
-
-		if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
+		// create minigsfs
+		for (unsigned int minigsfindex = 0; minigsfindex < minigsfcount; minigsfindex++)
 		{
-			if (!make_minigsf(minigsf_path, minigsfoffset, minigsfsize, minigsfindex, tags))
+			char minigsfname[PATH_MAX];
+
+			sprintf(minigsfname, "%s.%04d.minigsf", rom_basename.c_str(), minigsfindex);
+			std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
+
+			if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
 			{
-				minigsferrors++;
+				if (!make_minigsf(minigsf_path, minigsfoffset, minigsfsize, minigsfindex, tags))
+				{
+					minigsferrors++;
+				}
+			}
+			else
+			{
+				minigsfdupes++;
+			}
+		}
+
+		// show song count
+		if (quiet)
+		{
+			if (minigsfcount == 0)
+			{
+				fprintf(stderr, "No songs\n");
+			}
+			if (minigsferrors > 0)
+			{
+				fprintf(stderr, "%d error(s)\n", minigsferrors);
 			}
 		}
 		else
 		{
-			minigsfdupes++;
+			printf("%d succeeded", minigsfcount - minigsfdupes - minigsferrors);
+			if (minigsferrors > 0)
+			{
+				printf(", %d failed", minigsferrors);
+			}
+			if (minigsfdupes > 0)
+			{
+				printf(", %d skipped", minigsfdupes);
+			}
+			printf("\n");
+			printf("\n");
 		}
-	}
-
-	// show song count
-	if (quiet)
-	{
-		if (minigsfcount == 0)
-		{
-			fprintf(stderr, "No songs\n");
-		}
-		if (minigsferrors > 0)
-		{
-			fprintf(stderr, "%d error(s)\n", minigsferrors);
-		}
-	}
-	else
-	{
-		printf("%d succeeded", minigsfcount - minigsfdupes - minigsferrors);
-		if (minigsferrors > 0)
-		{
-			printf(", %d failed", minigsferrors);
-		}
-		if (minigsfdupes > 0)
-		{
-			printf(", %d skipped", minigsfdupes);
-		}
-		printf("\n");
-		printf("\n");
 	}
 
 	close_rom();
@@ -1233,6 +1259,7 @@ void printUsage(const char *cmd)
 	const char *availableOptions[] = {
 		"--help", "Show this help",
 		"-v, --verbose", "Output ripping info to STDOUT",
+		"-r", "Output uncompressed GBA ROM",
 		"-n [count]", "Set minigsf count",
 		"--gsf-driver-file [driver.bin] [0xXXXX]", "Specify relocatable GSF driver block and minigsf offset",
 		"--offset-gsf-driver [0xXXXXXXXX]", "Specify the offset of GSF driver block",
@@ -1276,6 +1303,8 @@ int main(int argc, char **argv)
 	char *strtol_endp;
 	unsigned long ul;
 
+	bool prefer_gba_rom = false;
+
 	app.set_quiet(true);
 
 	argi = 1;
@@ -1289,6 +1318,10 @@ int main(int argc, char **argv)
 		else if (strcmp(argv[argi], "-v") == 0 || strcmp(argv[argi], "--verbose") == 0)
 		{
 			app.set_quiet(false);
+		}
+		else if (strcmp(argv[argi], "-r") == 0)
+		{
+			prefer_gba_rom = true;
 		}
 		else if (strcmp(argv[argi], "-n") == 0)
 		{
@@ -1521,7 +1554,7 @@ int main(int argc, char **argv)
 	result = true;
 	for (; argi < argc; argi++)
 	{
-		result = result && app.make_gsf_set(argv[argi]);
+		result = result && app.make_gsf_set(argv[argi], prefer_gba_rom);
 	}
 	return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -24,6 +24,9 @@ Syntax: saptapper <GBA Files>
 -v, --verbose
   : Output ripping info to STDOUT
 
+-r
+  : Output uncompressed GBA ROM
+
 -n [count]
   : Set minigsf count
 
