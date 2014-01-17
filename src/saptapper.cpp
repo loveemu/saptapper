@@ -125,7 +125,7 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 
 	// compress exe
 	z.next_in = exe;
-	z.avail_in = exe_size;
+	z.avail_in = (uInt) exe_size;
 	z.next_out = zbuf;
 	z.avail_out = CHUNK;
 	zflush = Z_FINISH;
@@ -207,7 +207,7 @@ bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t address, size
 	}
 
 	// make exe
-	put_gsf_exe_header(exe, GBA_ENTRYPOINT, address, size);
+	put_gsf_exe_header(exe, GBA_ENTRYPOINT, address, (uint32_t) size);
 	mput4l(num, &exe[GSF_EXE_HEADER_SIZE]);
 
 	// write minigsf file
@@ -525,10 +525,10 @@ uint32_t Saptapper::find_m4a_main(uint32_t offset_m4a_selectsong)
 	}
 
 	// determine search range
-	code_minoffset = (offset_m4a_selectsong >= code_searchrange) ?
-		(offset_m4a_selectsong - code_searchrange) : 0;
-	code_maxoffset = (offset_m4a_selectsong - 4 + sizeof(code_main) <= rom_size) ?
-		(offset_m4a_selectsong - 4) : (rom_size - sizeof(code_main));
+	code_minoffset = (uint32_t) ((offset_m4a_selectsong >= code_searchrange) ?
+		(offset_m4a_selectsong - code_searchrange) : 0);
+	code_maxoffset = (uint32_t) ((offset_m4a_selectsong - 4 + sizeof(code_main) <= rom_size) ?
+		(offset_m4a_selectsong - 4) : (rom_size - sizeof(code_main)));
 
 	// backward search
 	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
@@ -575,10 +575,10 @@ uint32_t Saptapper::find_m4a_init(uint32_t offset_m4a_main)
 	}
 
 	// determine search range
-	code_minoffset = (offset_m4a_main >= code_searchrange) ?
-		(offset_m4a_main - code_searchrange) : 0;
-	code_maxoffset = (offset_m4a_main - 4 + sizeof(code_init[0]) <= rom_size) ?
-		(offset_m4a_main - 4) : (rom_size - sizeof(code_init[0]));
+	code_minoffset = (uint32_t) ((offset_m4a_main >= code_searchrange) ?
+		(offset_m4a_main - code_searchrange) : 0);
+	code_maxoffset = (uint32_t) ((offset_m4a_main - 4 + sizeof(code_init[0]) <= rom_size) ?
+		(offset_m4a_main - 4) : (rom_size - sizeof(code_init[0])));
 
 	// backward search
 	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
@@ -640,10 +640,10 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 	}
 
 	// determine search range
-	code_minoffset = (offset_m4a_init >= code_searchrange) ?
-		(offset_m4a_init - code_searchrange) : 0;
-	code_maxoffset = (offset_m4a_init - 4 + sizeof(code_vsync) <= rom_size) ?
-		(offset_m4a_init - 4) : (rom_size - sizeof(code_vsync));
+	code_minoffset = (uint32_t) ((offset_m4a_init >= code_searchrange) ?
+		(offset_m4a_init - code_searchrange) : 0);
+	code_maxoffset = (uint32_t) ((offset_m4a_init - 4 + sizeof(code_vsync) <= rom_size) ?
+		(offset_m4a_init - 4) : (rom_size - sizeof(code_vsync)));
 
 	// backward search
 	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
@@ -963,7 +963,7 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, boo
 		// add margin size
 		if (offset_gsf_driver != GSF_INVALID_OFFSET)
 		{
-			offset_gsf_driver += driver_margin_size;
+			offset_gsf_driver = (uint32_t) (offset_gsf_driver + driver_margin_size);
 		}
 	}
 	else
@@ -992,14 +992,14 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, boo
 	}
 	else
 	{
-		offset_minigsf_number = offset_gsf_driver + manual_minigsf_offset;
+		offset_minigsf_number = (uint32_t) (offset_gsf_driver + manual_minigsf_offset);
 	}
 
 	// install driver temporarily
 	install_driver(gsf_driver_block, offset_gsf_driver, gsf_driver_size);
 
 	// create gba/gsflib file
-	put_gsf_exe_header(rom_exe, GBA_ENTRYPOINT, GBA_ENTRYPOINT, rom_size);
+	put_gsf_exe_header(rom_exe, GBA_ENTRYPOINT, GBA_ENTRYPOINT, (uint32_t) rom_size);
 	if (prefer_gba_rom)
 	{
 		FILE* gba_file = NULL;
