@@ -9,7 +9,7 @@ This modified version provides some extra options that might be useful.
 Downloads
 ---------
 
-- [saptapper-20140116.7z](https://loveemu.googlecode.com/files/saptapper-20140116.7z) (all ripping routines are identical to unaltered version)
+- [saptapper-20140117.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlARlFsMlkyOXIzMlU/edit?usp=sharing) (all ripping routines are identical to unaltered version)
 
 Usage
 -----
