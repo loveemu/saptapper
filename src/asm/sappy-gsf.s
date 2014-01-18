@@ -46,7 +46,9 @@ init:
 	bl	bx_r3                   @ call sappy_SelectSongByNum
 
 main_loop:
-	swi	2                       @ Halt
+	ldr	r3, sappy_soundmain
+	bl	bx_r3
+	swi	5                       @ VSyncIntrWait
 	b	main_loop
 
 .arm
@@ -83,8 +85,6 @@ vsync_callback:
 
 	ldr	r3, sappy_vsync
 	bl	bx_r3
-	ldr	r3, sappy_soundmain
-	bl	bx_r3
 
 	pop	{r0}
 	bx	r0
@@ -99,13 +99,13 @@ num_4000000:
 num_4000200:
 	.word	0x04000200
 
+sappy_soundinit:
+	.word	0
+
 sappy_selectsong:
 	.word	0
 
 sappy_soundmain:
-	.word	0
-
-sappy_soundinit:
 	.word	0
 
 sappy_vsync:
