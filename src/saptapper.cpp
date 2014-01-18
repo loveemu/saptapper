@@ -616,25 +616,41 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 	// LDR     R2, [PC, #0x298]
 	// LDR     R3, [R0]
 	// SUBS    R3, R3, R2
-	const uint8_t code_vsync[10] = {
-		0xA6, 0x48, 0x00, 0x68, 0xA6, 0x4A, 0x03, 0x68, 0x9B, 0x1A,
-	};
+	BytePattern ptn_vsync(
+		"\xa6\x48\x00\x68\xa6\x4a\x03\x68"
+		"\x9b\x1a"
+		,
+		"?????xxx"
+		"xx"
+		,
+		0x0a);
+	// PUSH    {LR}
+	// LDR     R0, =dword_3007FF0
+	// LDR     R2, [R0]
+	// LDR     R0, [R2]
+	// LDR     R1, =0x978C92AD
+	BytePattern ptn_vsync_fever(
+		"\x00\xb5\x18\x48\x02\x68\x10\x68"
+		"\x17\x49"
+		,
+		"xx?xxxxx"
+		"?x"
+		,
+		0x0a);
 
 	const size_t code_searchrange = 0x800;
-	const uint32_t code_cmpoffset = 5;
 	uint32_t code_minoffset;
 	uint32_t code_maxoffset;
 	uint32_t offset;
 
 	assert(code_searchrange % 4 == 0);
-	assert(code_cmpoffset < sizeof(code_vsync));
 
 	// check length
-	if (offset_m4a_init >= rom_size || offset_m4a_init < 4)
+	if (rom_size < 4 || offset_m4a_init >= (rom_size - 4) || offset_m4a_init < 4)
 	{
 		return GSF_INVALID_OFFSET;
 	}
-	if (rom_size < sizeof(code_vsync))
+	if (rom_size < ptn_vsync.length())
 	{
 		return GSF_INVALID_OFFSET;
 	}
@@ -642,13 +658,13 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 	// determine search range
 	code_minoffset = (uint32_t) ((offset_m4a_init >= code_searchrange) ?
 		(offset_m4a_init - code_searchrange) : 0);
-	code_maxoffset = (uint32_t) ((offset_m4a_init - 4 + sizeof(code_vsync) <= rom_size) ?
-		(offset_m4a_init - 4) : (rom_size - sizeof(code_vsync)));
+	code_maxoffset = (uint32_t) ((offset_m4a_init - 4 + ptn_vsync.length() <= rom_size) ?
+		(offset_m4a_init - 4) : (rom_size - ptn_vsync.length()));
 
 	// backward search
 	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
 	{
-		if (memcmp(&rom[offset + code_cmpoffset], &code_vsync[code_cmpoffset], sizeof(code_vsync) - code_cmpoffset) == 0)
+		if (ptn_vsync.match(&rom[offset], rom_size - offset))
 		{
 			break;
 		}
@@ -656,6 +672,29 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 
 	// return the offset if available
 	if (offset >= code_minoffset && offset <= code_maxoffset)
+	{
+		return offset;
+	}
+
+	// else... prepare for extra search (Puyo Pop Fever, Precure, etc.)
+	code_minoffset = (uint32_t) (offset_m4a_init + 4);
+	code_maxoffset = (uint32_t) (offset_m4a_init + code_searchrange);
+	if (code_maxoffset > rom_size)
+	{
+		code_maxoffset = rom_size;
+	}
+
+	// forward search
+	for (offset = code_minoffset; offset < code_maxoffset; offset += 4)
+	{
+		if (ptn_vsync_fever.match(&rom[offset], rom_size - offset))
+		{
+			break;
+		}
+	}
+
+	// return the offset if available
+	if (offset >= code_minoffset && offset < code_maxoffset)
 	{
 		return offset;
 	}
