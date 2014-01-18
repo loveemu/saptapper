@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-17]"
+#define APP_VER		"[2014-01-18]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -895,24 +895,24 @@ bool Saptapper::is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int so
 
 Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_rom)
 {
-	uint8_t sappyblock[248] =
+	uint8_t sappyblock[244] =
 	{
-		0x00, 0x80, 0x2D, 0xE9, 0x01, 0x00, 0xBD, 0xE8, 0x50, 0x10, 0xA0, 0xE3, 0x00, 0x20, 0x90, 0xE5,
-		0x04, 0x00, 0x80, 0xE2, 0x04, 0x10, 0x41, 0xE2, 0x00, 0x00, 0x51, 0xE3, 0xFA, 0xFF, 0xFF, 0x1A,
-		0x0B, 0x00, 0x00, 0xEA, 0x53, 0x61, 0x70, 0x70, 0x79, 0x20, 0x44, 0x72, 0x69, 0x76, 0x65, 0x72,
+		0x01, 0x10, 0x8F, 0xE2, 0x11, 0xFF, 0x2F, 0xE1, 0x02, 0xA0, 0x01, 0x68, 0x04, 0x30, 0x0A, 0x0E,
+		0xFB, 0xD1, 0x1F, 0xE0, 0x53, 0x61, 0x70, 0x70, 0x79, 0x20, 0x44, 0x72, 0x69, 0x76, 0x65, 0x72,
 		0x20, 0x52, 0x69, 0x70, 0x70, 0x65, 0x72, 0x20, 0x62, 0x79, 0x20, 0x43, 0x61, 0x69, 0x74, 0x53,
 		0x69, 0x74, 0x68, 0x32, 0x5C, 0x5A, 0x6F, 0x6F, 0x70, 0x64, 0x2C, 0x20, 0x28, 0x63, 0x29, 0x20,
-		0x32, 0x30, 0x30, 0x34, 0x00, 0x40, 0x2D, 0xE9, 0x80, 0x00, 0x9F, 0xE5, 0x21, 0x00, 0x00, 0xEB,
-		0x88, 0x00, 0x9F, 0xE5, 0x00, 0x80, 0x2D, 0xE9, 0x02, 0x00, 0xBD, 0xE8, 0x30, 0x10, 0x81, 0xE2,
-		0x00, 0x10, 0x80, 0xE5, 0x01, 0x03, 0xA0, 0xE3, 0x08, 0x10, 0xA0, 0xE3, 0x04, 0x10, 0x80, 0xE5,
-		0x01, 0x10, 0xA0, 0xE3, 0x00, 0x12, 0x80, 0xE5, 0x08, 0x12, 0x80, 0xE5, 0x60, 0x00, 0x9F, 0xE5,
-		0x40, 0x10, 0x9F, 0xE5, 0x14, 0x00, 0x00, 0xEB, 0x00, 0x00, 0x02, 0xEF, 0xFD, 0xFF, 0xFF, 0xEA,
-		0x00, 0x40, 0x2D, 0xE9, 0x38, 0x00, 0x9F, 0xE5, 0x0E, 0x00, 0x00, 0xEB, 0x28, 0x00, 0x9F, 0xE5,
-		0x0C, 0x00, 0x00, 0xEB, 0x01, 0x03, 0xA0, 0xE3, 0x01, 0x18, 0xA0, 0xE3, 0x01, 0x10, 0x81, 0xE2,
-		0x00, 0x12, 0x80, 0xE5, 0x24, 0x00, 0x9F, 0xE5, 0x04, 0x10, 0x00, 0xE5, 0x01, 0x00, 0xBD, 0xE8,
-		0x10, 0xFF, 0x2F, 0xE1, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0xFF, 0x2F, 0xE1, 0x11, 0xFF, 0x2F, 0xE1,
-		0xFC, 0x7F, 0x00, 0x03, 0x01, 0x00, 0x00, 0x00
+		0x32, 0x30, 0x30, 0x34, 0x2C, 0x20, 0x32, 0x30, 0x31, 0x34, 0x20, 0x6C, 0x6F, 0x76, 0x65, 0x65,
+		0x6D, 0x75, 0x00, 0x00, 0x00, 0xB5, 0x22, 0x4B, 0x00, 0xF0, 0x48, 0xF8, 0x1B, 0x48, 0x07, 0xA1,
+		0x01, 0x60, 0x1B, 0x48, 0x08, 0x21, 0x41, 0x60, 0x01, 0x21, 0x1A, 0x48, 0x01, 0x60, 0x81, 0x60,
+		0x1D, 0x48, 0x19, 0x4B, 0x00, 0xF0, 0x3A, 0xF8, 0x02, 0xDF, 0xFD, 0xE7, 0x50, 0x30, 0x9F, 0xE5,
+		0x00, 0x10, 0x93, 0xE5, 0x21, 0x08, 0x01, 0xE0, 0x0F, 0x40, 0x2D, 0xE9, 0x25, 0x10, 0x8F, 0xE2,
+		0x01, 0x20, 0x10, 0xE2, 0x00, 0x00, 0x00, 0x1A, 0x01, 0x00, 0x00, 0xEA, 0x0F, 0xE0, 0xA0, 0xE1,
+		0x11, 0xFF, 0x2F, 0xE1, 0x0F, 0x40, 0xBD, 0xE8, 0xB2, 0x00, 0xC3, 0xE1, 0x18, 0x30, 0x9F, 0xE5,
+		0x04, 0x00, 0x03, 0xE5, 0x1E, 0xFF, 0x2F, 0xE1, 0x00, 0xB5, 0x0A, 0x4B, 0x00, 0xF0, 0x16, 0xF8,
+		0x06, 0x4B, 0x00, 0xF0, 0x13, 0xF8, 0x01, 0xBC, 0x00, 0x47, 0x00, 0x00, 0xFC, 0x7F, 0x00, 0x03,
+		0x00, 0x00, 0x00, 0x04, 0x00, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0xD0,
+		0x18, 0x47, 0x70, 0x47
 	};
 	uint8_t *gsf_driver_block = sappyblock;
 	size_t gsf_driver_size = sizeof(sappyblock);
@@ -935,10 +935,10 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, boo
 		gsf_driver_size = sizeof(sappyblock);
 
 		// set addresses to the driver block
-		mput4l(gba_offset_to_address(offset_m4a_selectsong | 1), &sappyblock[SAPPY_GSF_SELECTSONG_OFFSET]);
-		mput4l(gba_offset_to_address(offset_m4a_main | 1), &sappyblock[SAPPY_GSF_MAIN_OFFSET]);
-		mput4l(gba_offset_to_address(offset_m4a_init | 1), &sappyblock[SAPPY_GSF_INIT_OFFSET]);
-		mput4l(gba_offset_to_address(offset_m4a_vsync | 1), &sappyblock[SAPPY_GSF_VSYNC_OFFSET]);
+		mput4l((offset_m4a_selectsong != 0) ? gba_offset_to_address(offset_m4a_selectsong | 1) : 0, &sappyblock[SAPPY_GSF_SELECTSONG_OFFSET]);
+		mput4l((offset_m4a_main != 0) ? gba_offset_to_address(offset_m4a_main | 1) : 0, &sappyblock[SAPPY_GSF_MAIN_OFFSET]);
+		mput4l((offset_m4a_init != 0) ? gba_offset_to_address(offset_m4a_init | 1) : 0, &sappyblock[SAPPY_GSF_INIT_OFFSET]);
+		mput4l((offset_m4a_vsync != 0) ? gba_offset_to_address(offset_m4a_vsync | 1) : 0, &sappyblock[SAPPY_GSF_VSYNC_OFFSET]);
 	}
 	else
 	{
@@ -1107,7 +1107,11 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 	// show address info
 	if (!quiet)
 	{
-		if (offset_m4a_init != GSF_INVALID_OFFSET)
+		if (offset_m4a_init == 0)
+		{
+			printf("- sappy_init = null\n");
+		}
+		else if (offset_m4a_init != GSF_INVALID_OFFSET)
 		{
 			printf("- sappy_init = 0x%08X\n", gba_offset_to_address(offset_m4a_init));
 		}
@@ -1116,7 +1120,11 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 			printf("- sappy_init = undefined\n");
 		}
 
-		if (offset_m4a_main != GSF_INVALID_OFFSET)
+		if (offset_m4a_main == 0)
+		{
+			printf("- sappy_main = null\n");
+		}
+		else if (offset_m4a_main != GSF_INVALID_OFFSET)
 		{
 			printf("- sappy_main = 0x%08X\n", gba_offset_to_address(offset_m4a_main));
 		}
@@ -1125,7 +1133,11 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 			printf("- sappy_main = undefined\n");
 		}
 
-		if (offset_m4a_selectsong != GSF_INVALID_OFFSET)
+		if (offset_m4a_selectsong == 0)
+		{
+			printf("- sappy_selectsongbynum = null\n");
+		}
+		else if (offset_m4a_selectsong != GSF_INVALID_OFFSET)
 		{
 			printf("- sappy_selectsongbynum = 0x%08X\n", gba_offset_to_address(offset_m4a_selectsong));
 		}
@@ -1134,7 +1146,11 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 			printf("- sappy_selectsongbynum = undefined\n");
 		}
 
-		if (offset_m4a_vsync != GSF_INVALID_OFFSET)
+		if (offset_m4a_vsync == 0)
+		{
+			printf("- sappy_vsync = null\n");
+		}
+		else if (offset_m4a_vsync != GSF_INVALID_OFFSET)
 		{
 			printf("- sappy_vsync = 0x%08X\n", gba_offset_to_address(offset_m4a_vsync));
 		}
@@ -1143,7 +1159,11 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 			printf("- sappy_vsync = undefined\n");
 		}
 
-		if (offset_m4a_songtable != GSF_INVALID_OFFSET)
+		if (offset_m4a_songtable == 0)
+		{
+			printf("- sappy_songs = null\n");
+		}
+		else if (offset_m4a_songtable != GSF_INVALID_OFFSET)
 		{
 			printf("- sappy_songs = 0x%08X\n", gba_offset_to_address(offset_m4a_songtable));
 		}
@@ -1366,11 +1386,18 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
-			if (strtol_endp != NULL && *strtol_endp != '\0')
+			if (strcmp(argv[argi + 1], "null") == 0)
 			{
-				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
-				return EXIT_FAILURE;
+				ul = 0;
+			}
+			else
+			{
+				ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+				if (strtol_endp != NULL && *strtol_endp != '\0')
+				{
+					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+					return EXIT_FAILURE;
+				}
 			}
 			// GBA ROM address to offset
 			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
@@ -1387,11 +1414,18 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
-			if (strtol_endp != NULL && *strtol_endp != '\0')
+			if (strcmp(argv[argi + 1], "null") == 0)
 			{
-				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
-				return EXIT_FAILURE;
+				ul = 0;
+			}
+			else
+			{
+				ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+				if (strtol_endp != NULL && *strtol_endp != '\0')
+				{
+					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+					return EXIT_FAILURE;
+				}
 			}
 			// GBA ROM address to offset
 			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
@@ -1408,11 +1442,18 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
-			if (strtol_endp != NULL && *strtol_endp != '\0')
+			if (strcmp(argv[argi + 1], "null") == 0)
 			{
-				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
-				return EXIT_FAILURE;
+				ul = 0;
+			}
+			else
+			{
+				ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+				if (strtol_endp != NULL && *strtol_endp != '\0')
+				{
+					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+					return EXIT_FAILURE;
+				}
 			}
 			// GBA ROM address to offset
 			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
@@ -1429,11 +1470,18 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
-			if (strtol_endp != NULL && *strtol_endp != '\0')
+			if (strcmp(argv[argi + 1], "null") == 0)
 			{
-				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
-				return EXIT_FAILURE;
+				ul = 0;
+			}
+			else
+			{
+				ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+				if (strtol_endp != NULL && *strtol_endp != '\0')
+				{
+					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+					return EXIT_FAILURE;
+				}
 			}
 			// GBA ROM address to offset
 			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
@@ -1450,11 +1498,18 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
-			if (strtol_endp != NULL && *strtol_endp != '\0')
+			if (strcmp(argv[argi + 1], "null") == 0)
 			{
-				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
-				return EXIT_FAILURE;
+				ul = 0;
+			}
+			else
+			{
+				ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+				if (strtol_endp != NULL && *strtol_endp != '\0')
+				{
+					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+					return EXIT_FAILURE;
+				}
 			}
 			// GBA ROM address to offset
 			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
@@ -1471,11 +1526,18 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			ul = strtoul(argv[argi + 1], &strtol_endp, 16);
-			if (strtol_endp != NULL && *strtol_endp != '\0')
+			if (strcmp(argv[argi + 1], "null") == 0)
 			{
-				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
-				return EXIT_FAILURE;
+				ul = 0;
+			}
+			else
+			{
+				ul = strtoul(argv[argi + 1], &strtol_endp, 16);
+				if (strtol_endp != NULL && *strtol_endp != '\0')
+				{
+					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+					return EXIT_FAILURE;
+				}
 			}
 			// GBA ROM address to offset
 			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
