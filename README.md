@@ -9,7 +9,7 @@ This modified version provides some extra options that might be useful.
 Downloads
 ---------
 
-- [saptapper-20140118.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlAOEFpX2M2b3BCZXc/edit?usp=sharing)
+- [saptapper-20140119.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlAUEkyd1BQSGJ5S1E/edit?usp=sharing)
 - [saptapper-20140117.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlARlFsMlkyOXIzMlU/edit?usp=sharing) (all ripping routines are identical to unaltered version)
 
 Usage
