@@ -1322,7 +1322,7 @@ void printUsage(const char *cmd)
 {
 	const char *availableOptions[] = {
 		"--help", "Show this help",
-		"-v, --verbose", "Output ripping info to STDOUT",
+		"-q, --quiet", "Do not output ripping info to STDOUT",
 		"-r", "Output uncompressed GBA ROM",
 		"-n [count]", "Set minigsf count",
 		"--gsf-driver-file [driver.bin] [0xXXXX]", "Specify relocatable GSF driver block and minigsf offset",
@@ -1369,7 +1369,7 @@ int main(int argc, char **argv)
 
 	bool prefer_gba_rom = false;
 
-	app.set_quiet(true);
+	app.set_quiet(false);
 
 	argi = 1;
 	while (argi < argc && argv[argi][0] == '-')
@@ -1379,8 +1379,13 @@ int main(int argc, char **argv)
 			printUsage(argv[0]);
 			return EXIT_SUCCESS;
 		}
+		else if (strcmp(argv[argi], "-q") == 0 || strcmp(argv[argi], "--quiet") == 0)
+		{
+			app.set_quiet(true);
+		}
 		else if (strcmp(argv[argi], "-v") == 0 || strcmp(argv[argi], "--verbose") == 0)
 		{
+			// for backward compatibility, for now
 			app.set_quiet(false);
 		}
 		else if (strcmp(argv[argi], "-r") == 0)

@@ -22,8 +22,8 @@ Syntax: saptapper <GBA Files>
 --help
   : Show help
 
--v, --verbose
-  : Output ripping info to STDOUT
+-q, --quiet
+  : Do not output ripping info to STDOUT
 
 -r
   : Output uncompressed GBA ROM
