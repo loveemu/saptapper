@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-18]"
+#define APP_VER		"[2014-01-19]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -610,20 +610,17 @@ uint32_t Saptapper::find_m4a_init(uint32_t offset_m4a_main)
 
 uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 {
-	// Note that we do not use the first 5 bytes
-	// LDR     R0, [PC, #0x298]
+	// LDR     R0, =dword_3007FF0
 	// LDR     R0, [R0]
-	// LDR     R2, [PC, #0x298]
+	// LDR     R2, =0x68736D53
 	// LDR     R3, [R0]
-	// SUBS    R3, R3, R2
+	// SUBS or CMP (early versions, Momotarou Matsuri for instance)
 	BytePattern ptn_vsync(
 		"\xa6\x48\x00\x68\xa6\x4a\x03\x68"
-		"\x9b\x1a"
 		,
-		"?????xxx"
-		"xx"
+		"?xxx?xxx"
 		,
-		0x0a);
+		0x08);
 	// PUSH    {LR}
 	// LDR     R0, =dword_3007FF0
 	// LDR     R2, [R0]
@@ -638,7 +635,7 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 		,
 		0x0a);
 
-	const size_t code_searchrange = 0x800;
+	const size_t code_searchrange = 0x1800; // 0x1000 might be good, but longer is safer anyway :)
 	uint32_t code_minoffset;
 	uint32_t code_maxoffset;
 	uint32_t offset;
@@ -666,6 +663,13 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 	{
 		if (ptn_vsync.match(&rom[offset], rom_size - offset))
 		{
+			// Momotarou Matsuri:
+			// check "BX LR" and avoid false-positive
+			if (offset + 0x0e <= rom_size && mget2l(&rom[offset + 0x0c]) == 0x4770)
+			{
+				continue;
+			}
+
 			break;
 		}
 	}
