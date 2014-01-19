@@ -9,7 +9,7 @@ This modified version provides some extra options that might be useful.
 Downloads
 ---------
 
-- [saptapper-20140118.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlAUkJmZ1Q3eEJadWs/edit?usp=sharing) (buggy! do not use it for now.)
+- [saptapper-20140118.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlAUkJmZ1Q3eEJadWs/edit?usp=sharing)
 - [saptapper-20140117.7z](https://drive.google.com/file/d/0B6s5ZRAO2QlARlFsMlkyOXIzMlU/edit?usp=sharing) (all ripping routines are identical to unaltered version)
 
 Usage
@@ -31,25 +31,25 @@ Syntax: saptapper <GBA Files>
 -n [count]
   : Set minigsf count
 
---gsf-driver-file [driver.bin] [0xXXXX]
+-fd, --gsf-driver-file [driver.bin] [0xXXXX]
   : Specify relocatable GSF driver block and minigsf offset
 
---offset-gsf-driver [0xXXXXXXXX]
+-od, --offset-gsf-driver [0xXXXXXXXX]
   : Specify the offset of GSF driver block
 
---offset-selectsong [0xXXXXXXXX]
+-os, --offset-selectsong [0xXXXXXXXX]
   : Specify the offset of sappy_selectsong function
 
---offset-songtable [0xXXXXXXXX]
+-ot, --offset-songtable [0xXXXXXXXX]
   : Specify the offset of song table (well known Sappy offset)
 
---offset-main [0xXXXXXXXX]
+-om, --offset-main [0xXXXXXXXX]
   : Specify the offset of sappy_main function
 
---offset-init [0xXXXXXXXX]
+-oi, --offset-init [0xXXXXXXXX]
   : Specify the offset of sappy_init function
 
---offset-vsync [0xXXXXXXXX]
+-ov, --offset-vsync [0xXXXXXXXX]
   : Specify the offset of sappy_vsync function
 
 --tag-gsfby [name]

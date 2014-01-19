@@ -1325,13 +1325,13 @@ void printUsage(const char *cmd)
 		"-q, --quiet", "Do not output ripping info to STDOUT",
 		"-r", "Output uncompressed GBA ROM",
 		"-n [count]", "Set minigsf count",
-		"--gsf-driver-file [driver.bin] [0xXXXX]", "Specify relocatable GSF driver block and minigsf offset",
-		"--offset-gsf-driver [0xXXXXXXXX]", "Specify the offset of GSF driver block",
-		"--offset-selectsong [0xXXXXXXXX]", "Specify the offset of sappy_selectsong function",
-		"--offset-songtable [0xXXXXXXXX]", "Specify the offset of song table (well known Sappy offset)",
-		"--offset-main [0xXXXXXXXX]", "Specify the offset of sappy_main function",
-		"--offset-init [0xXXXXXXXX]", "Specify the offset of sappy_init function",
-		"--offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
+		"-fd, --gsf-driver-file [driver.bin] [0xXXXX]", "Specify relocatable GSF driver block and minigsf offset",
+		"-od, --offset-gsf-driver [0xXXXXXXXX]", "Specify the offset of GSF driver block",
+		"-os, --offset-selectsong [0xXXXXXXXX]", "Specify the offset of sappy_selectsong function",
+		"-ot, --offset-songtable [0xXXXXXXXX]", "Specify the offset of song table (well known Sappy offset)",
+		"-om, --offset-main [0xXXXXXXXX]", "Specify the offset of sappy_main function",
+		"-oi, --offset-init [0xXXXXXXXX]", "Specify the offset of sappy_init function",
+		"-ov, --offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
 		"--tag-gsfby [name]", "Specify the nickname of GSF ripper",
 		"--find-freespace [ROM.gba] [size]", "Find free space and quit",
 	};
@@ -1408,7 +1408,7 @@ int main(int argc, char **argv)
 			app.set_minigsf_count(ul);
 			argi++;
 		}
-		else if (strcmp(argv[argi], "--gsf-driver-file") == 0)
+		else if (strcmp(argv[argi], "-fd") == 0 || strcmp(argv[argi], "--gsf-driver-file") == 0)
 		{
 			if (argi + 2 >= argc)
 			{
@@ -1428,7 +1428,7 @@ int main(int argc, char **argv)
 			}
 			argi += 2;
 		}
-		else if (strcmp(argv[argi], "--offset-gsf-driver") == 0)
+		else if (strcmp(argv[argi], "-od") == 0 || strcmp(argv[argi], "--offset-gsf-driver") == 0)
 		{
 			if (argi + 1 >= argc)
 			{
@@ -1456,7 +1456,7 @@ int main(int argc, char **argv)
 			app.set_gsf_driver_offset(ul);
 			argi++;
 		}
-		else if (strcmp(argv[argi], "--offset-selectsong") == 0)
+		else if (strcmp(argv[argi], "-os") == 0 || strcmp(argv[argi], "--offset-selectsong") == 0)
 		{
 			if (argi + 1 >= argc)
 			{
@@ -1484,7 +1484,7 @@ int main(int argc, char **argv)
 			app.set_m4a_selectsong(ul);
 			argi++;
 		}
-		else if (strcmp(argv[argi], "--offset-songtable") == 0)
+		else if (strcmp(argv[argi], "-ot") == 0 || strcmp(argv[argi], "--offset-songtable") == 0)
 		{
 			if (argi + 1 >= argc)
 			{
@@ -1512,7 +1512,7 @@ int main(int argc, char **argv)
 			app.set_m4a_songtable(ul);
 			argi++;
 		}
-		else if (strcmp(argv[argi], "--offset-main") == 0)
+		else if (strcmp(argv[argi], "-om") == 0 || strcmp(argv[argi], "--offset-main") == 0)
 		{
 			if (argi + 1 >= argc)
 			{
@@ -1540,7 +1540,7 @@ int main(int argc, char **argv)
 			app.set_m4a_main(ul);
 			argi++;
 		}
-		else if (strcmp(argv[argi], "--offset-init") == 0)
+		else if (strcmp(argv[argi], "-oi") == 0 || strcmp(argv[argi], "--offset-init") == 0)
 		{
 			if (argi + 1 >= argc)
 			{
@@ -1568,7 +1568,7 @@ int main(int argc, char **argv)
 			app.set_m4a_init(ul);
 			argi++;
 		}
-		else if (strcmp(argv[argi], "--offset-vsync") == 0)
+		else if (strcmp(argv[argi], "-ov") == 0 || strcmp(argv[argi], "--offset-vsync") == 0)
 		{
 			if (argi + 1 >= argc)
 			{
