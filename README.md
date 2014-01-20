@@ -6,6 +6,9 @@ Automated GSF ripper tool created by Caitsith2, revised by loveemu.
 
 This modified version provides some extra options that might be useful.
 
+Caitsith2's original version can be found at GSF Central
+<http://www.caitsith2.com/gsf/ripping.html>
+
 Downloads
 ---------
 
