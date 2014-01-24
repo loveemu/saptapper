@@ -1275,7 +1275,7 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 
 			if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
 			{
-				if (!make_minigsf(minigsf_path, minigsfoffset, minigsfsize, minigsfindex, tags))
+				if (!make_minigsf(minigsf_path, gba_offset_to_address(minigsfoffset), minigsfsize, minigsfindex, tags))
 				{
 					minigsferrors++;
 				}
