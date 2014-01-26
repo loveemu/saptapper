@@ -575,8 +575,8 @@ uint32_t Saptapper::find_m4a_init(uint32_t offset_m4a_main)
 	}
 
 	// determine search range
-	code_minoffset = (uint32_t) ((offset_m4a_main >= code_searchrange) ?
-		(offset_m4a_main - code_searchrange) : 0);
+	code_minoffset = (uint32_t) ((offset_m4a_main >= code_searchrange + 4) ?
+		(offset_m4a_main - code_searchrange) : 4);
 	code_maxoffset = (uint32_t) ((offset_m4a_main - 4 + sizeof(code_init[0]) <= rom_size) ?
 		(offset_m4a_main - 4) : (rom_size - sizeof(code_init[0])));
 
@@ -653,8 +653,8 @@ uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
 	}
 
 	// determine search range
-	code_minoffset = (uint32_t) ((offset_m4a_init >= code_searchrange) ?
-		(offset_m4a_init - code_searchrange) : 0);
+	code_minoffset = (uint32_t) ((offset_m4a_init >= code_searchrange + 4) ?
+		(offset_m4a_init - code_searchrange) : 4);
 	code_maxoffset = (uint32_t) ((offset_m4a_init - 4 + ptn_vsync.length() <= rom_size) ?
 		(offset_m4a_init - 4) : (rom_size - ptn_vsync.length()));
 
