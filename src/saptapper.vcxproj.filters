@@ -13,12 +13,21 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\asm">
+      <UniqueIdentifier>{ea3e8982-6aea-4191-b89f-269223b829a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="saptapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BytePattern.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mp2kDriver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VgmDriverParam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,8 +44,16 @@
     <ClInclude Include="cpath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sappy-gsf.h">
+    <ClInclude Include="VgmDriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Mp2kDriver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="asm\sappy-gsf.s">
+      <Filter>Source Files\asm</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

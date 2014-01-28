@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bincrop", "bincrop\bincrop.vcxproj", "{11E4DE6B-16BB-4F8D-B954-C33D148784BC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bin2c", "bin2c\bin2c.vcxproj", "{A939884E-101F-468A-B3C9-ADAB389C4EDF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{11E4DE6B-16BB-4F8D-B954-C33D148784BC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{11E4DE6B-16BB-4F8D-B954-C33D148784BC}.Debug|Win32.Build.0 = Debug|Win32
+		{11E4DE6B-16BB-4F8D-B954-C33D148784BC}.Release|Win32.ActiveCfg = Release|Win32
+		{11E4DE6B-16BB-4F8D-B954-C33D148784BC}.Release|Win32.Build.0 = Release|Win32
+		{A939884E-101F-468A-B3C9-ADAB389C4EDF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A939884E-101F-468A-B3C9-ADAB389C4EDF}.Debug|Win32.Build.0 = Debug|Win32
+		{A939884E-101F-468A-B3C9-ADAB389C4EDF}.Release|Win32.ActiveCfg = Release|Win32
+		{A939884E-101F-468A-B3C9-ADAB389C4EDF}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

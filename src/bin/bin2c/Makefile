@@ -4,8 +4,8 @@ CFLAGS = -O2 -Wall
 CXX = g++
 CXXFLAGS = -O2 -Wall
 LDFLAGS = -lm -lz
-TARGET = saptapper
-SRCS = $(TARGET).cpp Mp2kDriver.cpp VgmDriverParam.cpp BytePattern.cpp
+TARGET = bin2c
+SRCS = $(TARGET).cpp
 OBJS := $(SRCS:.cpp=.o)
 
 .PHONY: all clean

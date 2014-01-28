@@ -4,8 +4,11 @@
 
 #include <stdint.h>
 #include <string>
+#include <vector>
 #include <map>
 
+#include "VgmDriver.h"
+#include "Mp2kDriver.h"
 #include "BytePattern.h"
 
 #define PSF_SIGNATURE	"PSF"
@@ -21,26 +24,33 @@
 
 #define GSF_INVALID_OFFSET	0xFFFFFFFF
 
+static inline bool is_gba_rom_address(uint32_t address)
+{
+	uint8_t region = (address >> 24) & 0xFE;
+	return (region == 8);
+}
+
+static inline uint32_t gba_address_to_offset(uint32_t address)
+{
+	if (!is_gba_rom_address(address)) {
+		//fprintf(stderr, "Warning: the address $%08X is not ROM address\n", address);
+	}
+	return address & 0x01FFFFFF;
+}
+
+static inline uint32_t gba_offset_to_address(uint32_t offset)
+{
+	return 0x08000000 | (offset & 0x01FFFFFF);
+}
+
 class Saptapper
 {
-public:
-	enum EGsfLibResult
-	{
-		GSFLIB_OK = 0,
-		GSFLIB_NOMAIN,
-		GSFLIB_NOSELECT,
-		GSFLIB_NOINIT,
-		GSFLIB_NOVSYNC,
-		GSFLIB_NOSPACE,
-		GSFLIB_ZLIB_ERR,
-		GSFLIB_INFILE_E,
-		GSFLIB_OTFILE_E,
-	};
-
 private:
 	uint8_t* rom;
 	uint8_t* rom_exe;
 	size_t rom_size;
+
+	std::vector<VgmDriver*> drivers;
 
 	// create backup of driver location
 	uint32_t rom_patch_entrypoint_backup;	// ARM B _start
@@ -48,24 +58,10 @@ private:
 	uint32_t rom_patch_offset;
 	size_t rom_patch_size;
 
-	uint32_t offset_m4a_main;
-	uint32_t offset_m4a_selectsong;
-	uint32_t offset_m4a_init;
-	uint32_t offset_m4a_vsync;
-	uint32_t offset_m4a_songtable;
-	uint32_t offset_gsf_driver;
-	uint32_t offset_minigsf_number;
-
-	uint32_t manual_offset_m4a_main;
-	uint32_t manual_offset_m4a_selectsong;
-	uint32_t manual_offset_m4a_init;
-	uint32_t manual_offset_m4a_vsync;
-	uint32_t manual_offset_m4a_songtable;
-	uint32_t manual_offset_gsf_driver;
-
 	uint8_t* manual_gsf_driver;
+	uint32_t manual_gsf_driver_offset;
 	size_t manual_gsf_driver_size;
-	size_t manual_minigsf_offset;
+	uint32_t manual_minigsf_offset;
 	uint32_t manual_minigsf_count;
 
 	std::string tag_gsfby;
@@ -82,30 +78,24 @@ public:
 		rom_patch_backup(NULL),
 		rom_patch_offset(GSF_INVALID_OFFSET),
 		rom_patch_size(0),
-		offset_m4a_main(GSF_INVALID_OFFSET),
-		offset_m4a_selectsong(GSF_INVALID_OFFSET),
-		offset_m4a_init(GSF_INVALID_OFFSET),
-		offset_m4a_vsync(GSF_INVALID_OFFSET),
-		offset_m4a_songtable(GSF_INVALID_OFFSET),
-		offset_gsf_driver(GSF_INVALID_OFFSET),
-		offset_minigsf_number(GSF_INVALID_OFFSET),
-		manual_offset_m4a_main(GSF_INVALID_OFFSET),
-		manual_offset_m4a_selectsong(GSF_INVALID_OFFSET),
-		manual_offset_m4a_init(GSF_INVALID_OFFSET),
-		manual_offset_m4a_vsync(GSF_INVALID_OFFSET),
-		manual_offset_m4a_songtable(GSF_INVALID_OFFSET),
-		manual_offset_gsf_driver(GSF_INVALID_OFFSET),
 		manual_gsf_driver(NULL),
+		manual_gsf_driver_offset(GSF_INVALID_OFFSET),
 		manual_gsf_driver_size(0),
 		manual_minigsf_offset(GSF_INVALID_OFFSET),
 		manual_minigsf_count(GSF_INVALID_OFFSET),
 		quiet(true),
 		prefer_larger_free_space(false)
 	{
+		drivers.push_back(new Mp2kDriver());
 	}
 
 	~Saptapper()
 	{
+		for (std::vector<VgmDriver*>::iterator it = drivers.begin() ; it != drivers.end(); ++it)
+		{
+			delete (*it);
+		}
+
 		unset_gsf_driver();
 		close_rom();
 	}
@@ -114,36 +104,10 @@ public:
 	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size);
 	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size, std::map<std::string, std::string>& tags);
 	static bool make_minigsf(const std::string& gsf_path, uint32_t address, size_t size, uint32_t num, std::map<std::string, std::string>& tags);
-	static const char* get_gsflib_error(EGsfLibResult error_type);
-
-	inline void set_m4a_main(uint32_t offset)
-	{
-		manual_offset_m4a_main = offset;
-	}
-
-	inline void set_m4a_selectsong(uint32_t offset)
-	{
-		manual_offset_m4a_selectsong = offset;
-	}
-
-	inline void set_m4a_init(uint32_t offset)
-	{
-		manual_offset_m4a_init = offset;
-	}
-
-	inline void set_m4a_vsync(uint32_t offset)
-	{
-		manual_offset_m4a_vsync = offset;
-	}
-
-	inline void set_m4a_songtable(uint32_t offset)
-	{
-		manual_offset_m4a_songtable = offset;
-	}
 
 	inline void set_gsf_driver_offset(uint32_t offset)
 	{
-		manual_offset_gsf_driver = offset;
+		manual_gsf_driver_offset = offset;
 	}
 
 	inline void set_minigsf_count(uint32_t count)
@@ -159,18 +123,13 @@ public:
 	bool load_rom_file(const std::string& rom_path);
 	void close_rom(void);
 
-	uint32_t find_m4a_selectsong(void);
-	uint32_t find_m4a_songtable(uint32_t offset_m4a_selectsong);
-	uint32_t find_m4a_main(uint32_t offset_m4a_selectsong);
-	uint32_t find_m4a_init(uint32_t offset_m4a_main);
-	uint32_t find_m4a_vsync(uint32_t offset_m4a_init);
 	uint32_t find_free_space(size_t size, uint8_t filler);
 	uint32_t find_free_space(size_t size);
-	EGsfLibResult find_m4a_addresses(void);
-	unsigned int get_song_count(uint32_t offset_m4a_songtable);
 
-	EGsfLibResult make_gsflib(const std::string& gsf_path, bool prefer_gba_rom);
+	VgmDriver * make_gsflib(const std::string& gsf_path, bool prefer_gba_rom);
+	VgmDriver * make_gsflib(const std::string& gsf_path, bool prefer_gba_rom, std::map<std::string, VgmDriverParam>& driver_params, uint32_t * ptr_driver_offset);
 	bool make_gsf_set(const std::string& rom_path, bool prefer_gba_rom);
+	bool make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, std::map<std::string, VgmDriverParam>& driver_params);
 
 	inline void set_tag_gsfby(const std::string& gsfby)
 	{
@@ -187,30 +146,19 @@ public:
 		this->prefer_larger_free_space = prefer_larger_free_space;
 	}
 
-	static inline bool is_gba_rom_address(uint32_t address)
+	inline std::string message()
 	{
-		uint8_t region = (address >> 24) & 0xFE;
-		return (region == 8);
-	}
-
-	static inline uint32_t gba_address_to_offset(uint32_t address)
-	{
-		if (!is_gba_rom_address(address)) {
-			//fprintf(stderr, "Warning: the address $%08X is not ROM address\n", address);
-		}
-		return address & 0x01FFFFFF;
-	}
-
-	static inline uint32_t gba_offset_to_address(uint32_t offset)
-	{
-		return 0x08000000 | (offset & 0x01FFFFFF);
+		return m_message;
 	}
 
 private:
-	bool install_driver(uint8_t* driver_block, uint32_t offset, size_t size);
+	void make_backup_for_driver(uint32_t offset, size_t size);
+	bool install_driver(const uint8_t* driver_block, uint32_t offset, size_t size);
 	void uninstall_driver(void);
 
-	bool is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index);
+	void print_driver_params(const std::map<std::string, VgmDriverParam>& driver_params) const;
+
+	std::string m_message;
 };
 
 #endif

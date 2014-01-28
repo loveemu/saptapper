@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-19]"
+#define APP_VER		"[2014-01-27]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <assert.h>
 #include <string>
 #include <sstream>
 #include <map>
@@ -24,10 +23,15 @@
 #include "zlib.h"
 
 #include "saptapper.h"
-#include "sappy-gsf.h"
 #include "BytePattern.h"
 #include "cbyteio.h"
 #include "cpath.h"
+
+#define SAPPY_GSF_INIT_OFFSET       0x00D8
+#define SAPPY_GSF_SELECTSONG_OFFSET 0x00DC
+#define SAPPY_GSF_MAIN_OFFSET       0x00E0
+#define SAPPY_GSF_VSYNC_OFFSET      0x00E4
+#define SAPPY_GSF_MINIGSF_OFFSET    0x00E8
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -42,31 +46,6 @@
 #define _mkdir(s)	mkdir((s), 0777)
 #define _rmdir(s)	rmdir((s))
 #endif
-
-unsigned int memcmploose(const void *buf1, const void *buf2, size_t n, unsigned int maxdiff)
-{
-	size_t i;
-	int diff = 0;
-
-	if (maxdiff == 0)
-	{
-		return 0;
-	}
-
-	for (i = 0; i < n; i++)
-	{
-		if (((uint8_t*)buf1)[i] != ((uint8_t*)buf2)[i])
-		{
-			diff++;
-
-			if (diff == maxdiff)
-			{
-				break;
-			}
-		}
-	}
-	return diff;
-}
 
 void Saptapper::put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size)
 {
@@ -214,42 +193,6 @@ bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t address, size
 	return exe2gsf(gsf_path, exe, GSF_EXE_HEADER_SIZE + size, tags);
 }
 
-const char* Saptapper::get_gsflib_error(EGsfLibResult gsflibstat)
-{
-	switch (gsflibstat)
-	{
-	case GSFLIB_OK:
-		return "Operation finished successfully";
-
-	case GSFLIB_NOMAIN:
-		return "sappy_main not found";
-
-	case GSFLIB_NOSELECT:
-		return "sappy_selectsongbynum not found";
-
-	case GSFLIB_NOINIT:
-		return "sappy_init not found";
-
-	case GSFLIB_NOVSYNC:
-		return "sappy_vsync not found";
-
-	case GSFLIB_NOSPACE:
-		return "Insufficient space found";
-
-	case GSFLIB_ZLIB_ERR:
-		return "GSFLIB zlib compression error";
-
-	case GSFLIB_INFILE_E:
-		return "File read error";
-
-	case GSFLIB_OTFILE_E:
-		return "File write error";
-
-	default:
-		return "Undefined error";
-	}
-}
-
 bool Saptapper::set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset)
 {
 	unset_gsf_driver();
@@ -388,7 +331,21 @@ void Saptapper::close_rom(void)
 	rom_size = 0;
 }
 
-bool Saptapper::install_driver(uint8_t* driver_block, uint32_t offset, size_t size)
+void Saptapper::make_backup_for_driver(uint32_t offset, size_t size)
+{
+	uninstall_driver();
+
+	// allocate memory for backup
+	rom_patch_backup = new uint8_t[size];
+
+	// make a backup of unpatched ROM
+	rom_patch_entrypoint_backup = mget4l(&rom[0]);
+	memcpy(rom_patch_backup, &rom[offset], size);
+	rom_patch_offset = offset;
+	rom_patch_size = size;
+}
+
+bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, size_t size)
 {
 	uninstall_driver();
 
@@ -399,18 +356,8 @@ bool Saptapper::install_driver(uint8_t* driver_block, uint32_t offset, size_t si
 		return false;
 	}
 
-	// allocate memory for backup
-	rom_patch_backup = new uint8_t[size];
-	if (rom_patch_backup == NULL)
-	{
-		return false;
-	}
-
 	// make a backup of unpatched ROM
-	rom_patch_entrypoint_backup = mget4l(&rom[0]);
-	memcpy(rom_patch_backup, &rom[offset], size);
-	rom_patch_offset = offset;
-	rom_patch_size = size;
+	make_backup_for_driver(offset, size);
 
 	// patch ROM
 	mput4l(0xEA000000 | (((offset - 8) / 4) & 0xFFFFFF), &rom[0]);
@@ -433,384 +380,20 @@ void Saptapper::uninstall_driver(void)
 	rom_patch_size = 0;
 }
 
-uint32_t Saptapper::find_m4a_selectsong(void)
+void Saptapper::print_driver_params(const std::map<std::string, VgmDriverParam>& driver_params) const
 {
-	const uint8_t code_selectsong[0x1E] = {
-		0x00, 0xB5, 0x00, 0x04, 0x07, 0x4A, 0x08, 0x49, 
-		0x40, 0x0B, 0x40, 0x18, 0x83, 0x88, 0x59, 0x00, 
-		0xC9, 0x18, 0x89, 0x00, 0x89, 0x18, 0x0A, 0x68, 
-		0x01, 0x68, 0x10, 0x1C, 0x00, 0xF0,
-	};
-	const unsigned int code_maxdiff = 8;
-	uint32_t offset;
-
-	// check length
-	if (rom_size < sizeof(code_selectsong))
+	for (std::map<std::string, VgmDriverParam>::const_iterator it = driver_params.begin(); it != driver_params.end(); ++it)
 	{
-		return GSF_INVALID_OFFSET;
-	}
+		std::string name = it->first;
+		const VgmDriverParam& data = it->second;
 
-	// search (function address must be 32bit-aligned)
-	for (offset = 0; offset < rom_size - sizeof(code_selectsong); offset += 4)
-	{
-		// loose matching
-		if (memcmploose(&rom[offset], code_selectsong, sizeof(code_selectsong), code_maxdiff) < code_maxdiff)
+		if (!name.empty() && name[0] == '_')
 		{
-			break;
+			name = name.substr(1);
 		}
-	}
 
-	// return the offset if available
-	if (offset + sizeof(code_selectsong) <= rom_size)
-	{
-		return offset;
+		printf("- %s = %s\n", name.c_str(), data.tostring().c_str());
 	}
-	else
-	{
-		return GSF_INVALID_OFFSET;
-	}
-}
-
-uint32_t Saptapper::find_m4a_songtable(uint32_t offset_m4a_selectsong)
-{
-	uint32_t offset;
-
-	if (offset_m4a_selectsong >= rom_size)
-	{
-		return GSF_INVALID_OFFSET;
-	}
-	if (offset_m4a_selectsong + 40 + 4 > rom_size)
-	{
-		return GSF_INVALID_OFFSET;
-	}
-
-	offset = mget4l(&rom[offset_m4a_selectsong + 40]);
-	if (!is_gba_rom_address(offset))
-	{
-		return GSF_INVALID_OFFSET;
-	}
-	offset = gba_address_to_offset(offset);
-
-	if (offset < rom_size)
-	{
-		return offset;
-	}
-	else
-	{
-		return GSF_INVALID_OFFSET;
-	}
-}
-
-uint32_t Saptapper::find_m4a_main(uint32_t offset_m4a_selectsong)
-{
-	// PUSH    {LR}
-	const uint8_t code_main[2] = {
-		0x00, 0xB5,
-	};
-	const size_t code_searchrange = 0x20;
-	uint32_t code_minoffset;
-	uint32_t code_maxoffset;
-	uint32_t offset;
-
-	assert(code_searchrange % 4 == 0);
-
-	// check length
-	if (offset_m4a_selectsong >= rom_size || offset_m4a_selectsong < 4)
-	{
-		return GSF_INVALID_OFFSET;
-	}
-	if (rom_size < sizeof(code_main))
-	{
-		return GSF_INVALID_OFFSET;
-	}
-
-	// determine search range
-	code_minoffset = (uint32_t) ((offset_m4a_selectsong >= code_searchrange) ?
-		(offset_m4a_selectsong - code_searchrange) : 0);
-	code_maxoffset = (uint32_t) ((offset_m4a_selectsong - 4 + sizeof(code_main) <= rom_size) ?
-		(offset_m4a_selectsong - 4) : (rom_size - sizeof(code_main)));
-
-	// backward search
-	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
-	{
-		if (memcmp(&rom[offset], code_main, sizeof(code_main)) == 0)
-		{
-			break;
-		}
-	}
-
-	// return the offset if available
-	if (offset >= code_minoffset && offset <= code_maxoffset)
-	{
-		return offset;
-	}
-	else
-	{
-		return GSF_INVALID_OFFSET;
-	}
-}
-
-uint32_t Saptapper::find_m4a_init(uint32_t offset_m4a_main)
-{
-	const uint8_t code_init[2][2] = { 
-		{0x70, 0xB5},	// PUSH    {R4-R6,LR}
-		{0xF0, 0xB5},	// PUSH    {R4-R7,LR}
-	};
-	const size_t code_patcount = sizeof(code_init[0]) / sizeof(code_init[0][0]);
-	const size_t code_searchrange = 0x100;
-	uint32_t code_minoffset;
-	uint32_t code_maxoffset;
-	uint32_t offset;
-
-	assert(code_searchrange % 4 == 0);
-
-	// check length
-	if (offset_m4a_main >= rom_size || offset_m4a_main < 4)
-	{
-		return GSF_INVALID_OFFSET;
-	}
-	if (rom_size < sizeof(code_init[0]))
-	{
-		return GSF_INVALID_OFFSET;
-	}
-
-	// determine search range
-	code_minoffset = (uint32_t) ((offset_m4a_main >= code_searchrange + 4) ?
-		(offset_m4a_main - code_searchrange) : 4);
-	code_maxoffset = (uint32_t) ((offset_m4a_main - 4 + sizeof(code_init[0]) <= rom_size) ?
-		(offset_m4a_main - 4) : (rom_size - sizeof(code_init[0])));
-
-	// backward search
-	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
-	{
-		size_t code_patindex;
-		for (code_patindex = 0; code_patindex < code_patcount; code_patindex++)
-		{
-			if (memcmp(&rom[offset], code_init[code_patindex], sizeof(code_init[0])) == 0)
-			{
-				break;
-			}
-		}
-		if (code_patindex != code_patcount)
-		{
-			break;
-		}
-	}
-
-	// return the offset if available
-	if (offset >= code_minoffset && offset <= code_maxoffset)
-	{
-		return offset;
-	}
-	else
-	{
-		return GSF_INVALID_OFFSET;
-	}
-}
-
-uint32_t Saptapper::find_m4a_vsync(uint32_t offset_m4a_init)
-{
-	// LDR     R0, =dword_3007FF0
-	// LDR     R0, [R0]
-	// LDR     R2, =0x68736D53
-	// LDR     R3, [R0]
-	// SUBS or CMP (early versions, Momotarou Matsuri for instance)
-	BytePattern ptn_vsync(
-		"\xa6\x48\x00\x68\xa6\x4a\x03\x68"
-		,
-		"?xxx?xxx"
-		,
-		0x08);
-	// PUSH    {LR}
-	// LDR     R0, =dword_3007FF0
-	// LDR     R2, [R0]
-	// LDR     R0, [R2]
-	// LDR     R1, =0x978C92AD
-	BytePattern ptn_vsync_fever(
-		"\x00\xb5\x18\x48\x02\x68\x10\x68"
-		"\x17\x49"
-		,
-		"xx?xxxxx"
-		"?x"
-		,
-		0x0a);
-
-	const size_t code_searchrange = 0x1800; // 0x1000 might be good, but longer is safer anyway :)
-	uint32_t code_minoffset;
-	uint32_t code_maxoffset;
-	uint32_t offset;
-
-	assert(code_searchrange % 4 == 0);
-
-	// check length
-	if (rom_size < 4 || offset_m4a_init >= (rom_size - 4) || offset_m4a_init < 4)
-	{
-		return GSF_INVALID_OFFSET;
-	}
-	if (rom_size < ptn_vsync.length())
-	{
-		return GSF_INVALID_OFFSET;
-	}
-
-	// determine search range
-	code_minoffset = (uint32_t) ((offset_m4a_init >= code_searchrange + 4) ?
-		(offset_m4a_init - code_searchrange) : 4);
-	code_maxoffset = (uint32_t) ((offset_m4a_init - 4 + ptn_vsync.length() <= rom_size) ?
-		(offset_m4a_init - 4) : (rom_size - ptn_vsync.length()));
-
-	// backward search
-	for (offset = code_maxoffset; offset >= code_minoffset; offset -= 4)
-	{
-		if (ptn_vsync.match(&rom[offset], rom_size - offset))
-		{
-			// Momotarou Matsuri:
-			// check "BX LR" and avoid false-positive
-			if (offset + 0x0e <= rom_size && mget2l(&rom[offset + 0x0c]) == 0x4770)
-			{
-				continue;
-			}
-
-			break;
-		}
-	}
-
-	// return the offset if available
-	if (offset >= code_minoffset && offset <= code_maxoffset)
-	{
-		return offset;
-	}
-
-	// else... prepare for extra search (Puyo Pop Fever, Precure, etc.)
-	code_minoffset = (uint32_t) (offset_m4a_init + 4);
-	code_maxoffset = (uint32_t) (offset_m4a_init + code_searchrange);
-	if (code_maxoffset > rom_size)
-	{
-		code_maxoffset = rom_size;
-	}
-
-	// forward search
-	for (offset = code_minoffset; offset < code_maxoffset; offset += 4)
-	{
-		if (ptn_vsync_fever.match(&rom[offset], rom_size - offset))
-		{
-			break;
-		}
-	}
-
-	// return the offset if available
-	if (offset >= code_minoffset && offset < code_maxoffset)
-	{
-		return offset;
-	}
-	else
-	{
-		return GSF_INVALID_OFFSET;
-	}
-}
-
-Saptapper::EGsfLibResult Saptapper::find_m4a_addresses(void)
-{
-	if (manual_offset_m4a_selectsong == GSF_INVALID_OFFSET)
-	{
-		offset_m4a_selectsong = find_m4a_selectsong();
-	}
-	else
-	{
-		if (manual_offset_m4a_selectsong < rom_size)
-		{
-			offset_m4a_selectsong = manual_offset_m4a_selectsong;
-		}
-		else
-		{
-			offset_m4a_selectsong = GSF_INVALID_OFFSET;
-		}
-	}
-
-	if (manual_offset_m4a_songtable == GSF_INVALID_OFFSET)
-	{
-		offset_m4a_songtable = find_m4a_songtable(offset_m4a_selectsong);
-	}
-	else
-	{
-		if (manual_offset_m4a_songtable < rom_size)
-		{
-			offset_m4a_songtable = manual_offset_m4a_songtable;
-		}
-		else
-		{
-			offset_m4a_songtable = GSF_INVALID_OFFSET;
-		}
-	}
-
-	if (manual_offset_m4a_main == GSF_INVALID_OFFSET)
-	{
-		offset_m4a_main = find_m4a_main(offset_m4a_selectsong);
-	}
-	else
-	{
-		if (manual_offset_m4a_main < rom_size)
-		{
-			offset_m4a_main = manual_offset_m4a_main;
-		}
-		else
-		{
-			offset_m4a_main = GSF_INVALID_OFFSET;
-		}
-	}
-
-	if (manual_offset_m4a_init == GSF_INVALID_OFFSET)
-	{
-		offset_m4a_init = find_m4a_init(offset_m4a_main);
-	}
-	else
-	{
-		if (manual_offset_m4a_init < rom_size)
-		{
-			offset_m4a_init = manual_offset_m4a_init;
-		}
-		else
-		{
-			offset_m4a_init = GSF_INVALID_OFFSET;
-		}
-	}
-
-	if (manual_offset_m4a_vsync == GSF_INVALID_OFFSET)
-	{
-		offset_m4a_vsync = find_m4a_vsync(offset_m4a_init);
-	}
-	else
-	{
-		if (manual_offset_m4a_vsync < rom_size)
-		{
-			offset_m4a_vsync = manual_offset_m4a_vsync;
-		}
-		else
-		{
-			offset_m4a_vsync = GSF_INVALID_OFFSET;
-		}
-	}
-
-	if (offset_m4a_selectsong == GSF_INVALID_OFFSET)
-	{
-		return GSFLIB_NOSELECT;
-	}
-	else if (offset_m4a_main == GSF_INVALID_OFFSET)
-	{
-		return GSFLIB_NOMAIN;
-	}
-	else if (offset_m4a_init == GSF_INVALID_OFFSET)
-	{
-		return GSFLIB_NOINIT;
-	}
-	else if (offset_m4a_vsync == GSF_INVALID_OFFSET)
-	{
-		return GSFLIB_NOVSYNC;
-	}
-	//else if (offset_m4a_songtable == GSF_INVALID_OFFSET)
-	//{
-	//	return GSFLIB_NOSONGTABLE;
-	//}
-	return GSFLIB_OK;
 }
 
 uint32_t Saptapper::find_free_space(size_t size, uint8_t filler)
@@ -879,122 +462,67 @@ uint32_t Saptapper::find_free_space(size_t size)
 	return offset;
 }
 
-unsigned int Saptapper::get_song_count(uint32_t offset_m4a_songtable)
+VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_rom)
 {
-	unsigned int song_count = 0;
-	uint32_t offset;
+	std::map<std::string, VgmDriverParam> driver_params;
+	return make_gsflib(gsf_path, prefer_gba_rom, driver_params, NULL);
+}
 
-	// check length
-	if (offset_m4a_songtable == GSF_INVALID_OFFSET ||
-		rom_size < 8 || offset_m4a_songtable > rom_size - 8)
-	{
-		return 0;
-	}
+VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_rom, std::map<std::string, VgmDriverParam>& driver_params, uint32_t * ptr_driver_offset)
+{
+	char msg[2048];
+	VgmDriver * driver = NULL;
 
-	// parse song table
-	offset = offset_m4a_songtable;
-	while (offset + 8 <= rom_size)
+	// erase error message
+	m_message = "";
+
+	// determine the driver
+	if (manual_gsf_driver == NULL)
 	{
-		uint32_t addr = mget4l(&rom[offset]);
-		if (!is_gba_rom_address(addr))
+		for (std::vector<VgmDriver*>::iterator it = drivers.begin(); it != drivers.end(); ++it)
 		{
+			VgmDriver * driver_candidate = (*it);
+
+			std::map<std::string, VgmDriverParam> driver_params_attempt(driver_params);
+			driver_candidate->FindDriverParams(rom, rom_size, driver_params_attempt);
+			if (!driver_candidate->ValidateDriverParams(rom, rom_size, driver_params_attempt))
+			{
+				if (!m_message.empty())
+				{
+					m_message += "\n";
+				}
+				m_message += driver_candidate->GetName() + ": " + driver_candidate->message();
+				continue;
+			}
+
+			driver = driver_candidate;
+			driver_params = driver_params_attempt;
 			break;
 		}
 
-		song_count++;
-		offset += 8;
-	}
-	return song_count;
-}
-
-bool Saptapper::is_song_duplicate(uint32_t offset_m4a_songtable, unsigned int song_index)
-{
-	uint32_t offset;
-	uint32_t src_offset;
-
-	// check length
-	if (offset_m4a_songtable == GSF_INVALID_OFFSET ||
-		rom_size < 8 || offset_m4a_songtable > rom_size - 8)
-	{
-		return false;
-	}
-	src_offset = offset_m4a_songtable + (song_index * 8);
-	if (src_offset + 8 > rom_size)
-	{
-		return false;
-	}
-
-	offset = offset_m4a_songtable;
-	while (offset + 8 <= rom_size && offset < src_offset)
-	{
-		if (memcmp(&rom[offset], &rom[src_offset], 8) == 0)
+		if (driver == NULL)
 		{
-			return true;
+			return NULL;
 		}
-		offset += 8;
 	}
-	return false;
-}
 
-Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_rom)
-{
-	uint8_t sappyblock[244] =
-	{
-		0x01, 0x10, 0x8F, 0xE2, 0x11, 0xFF, 0x2F, 0xE1, 0x02, 0xA0, 0x01, 0x68, 0x04, 0x30, 0x0A, 0x0E,
-		0xFB, 0xD1, 0x1F, 0xE0, 0x53, 0x61, 0x70, 0x70, 0x79, 0x20, 0x44, 0x72, 0x69, 0x76, 0x65, 0x72,
-		0x20, 0x52, 0x69, 0x70, 0x70, 0x65, 0x72, 0x20, 0x62, 0x79, 0x20, 0x43, 0x61, 0x69, 0x74, 0x53,
-		0x69, 0x74, 0x68, 0x32, 0x5C, 0x5A, 0x6F, 0x6F, 0x70, 0x64, 0x2C, 0x20, 0x28, 0x63, 0x29, 0x20,
-		0x32, 0x30, 0x30, 0x34, 0x2C, 0x20, 0x32, 0x30, 0x31, 0x34, 0x20, 0x6C, 0x6F, 0x76, 0x65, 0x65,
-		0x6D, 0x75, 0x00, 0x00, 0x00, 0xB5, 0x20, 0x4B, 0x00, 0xF0, 0x48, 0xF8, 0x1B, 0x48, 0x09, 0xA1,
-		0x01, 0x60, 0x1B, 0x48, 0x08, 0x21, 0x41, 0x60, 0x01, 0x21, 0x1A, 0x48, 0x01, 0x60, 0x81, 0x60,
-		0x1D, 0x48, 0x1A, 0x4B, 0x00, 0xF0, 0x3A, 0xF8, 0x19, 0x4B, 0x00, 0xF0, 0x37, 0xF8, 0x05, 0xDF,
-		0xFA, 0xE7, 0x00, 0x00, 0x48, 0x30, 0x9F, 0xE5, 0x00, 0x10, 0x93, 0xE5, 0x21, 0x08, 0x01, 0xE0,
-		0x0F, 0x40, 0x2D, 0xE9, 0x25, 0x10, 0x8F, 0xE2, 0x01, 0x20, 0x10, 0xE2, 0x00, 0x00, 0x00, 0x1A,
-		0x01, 0x00, 0x00, 0xEA, 0x0F, 0xE0, 0xA0, 0xE1, 0x11, 0xFF, 0x2F, 0xE1, 0x0F, 0x40, 0xBD, 0xE8,
-		0xB2, 0x00, 0xC3, 0xE1, 0x10, 0x30, 0x9F, 0xE5, 0x04, 0x00, 0x03, 0xE5, 0x1E, 0xFF, 0x2F, 0xE1,
-		0x00, 0xB5, 0x08, 0x4B, 0x00, 0xF0, 0x12, 0xF8, 0x01, 0xBC, 0x00, 0x47, 0xFC, 0x7F, 0x00, 0x03,
-		0x00, 0x00, 0x00, 0x04, 0x00, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0xD0,
-		0x18, 0x47, 0x70, 0x47
-	};
-	uint8_t *gsf_driver_block = sappyblock;
-	size_t gsf_driver_size = sizeof(sappyblock);
-
-	EGsfLibResult gsflibstat;
-
-	// obtain necessary addresses
-	gsflibstat = find_m4a_addresses();
-
-	// prepare driver block
+	// determine driver size
+	size_t gsf_driver_size;
 	if (manual_gsf_driver == NULL)
 	{
-		if (gsflibstat != GSFLIB_OK)
-		{
-			return gsflibstat;
-		}
-
-		// set driver pointer
-		gsf_driver_block = sappyblock;
-		gsf_driver_size = sizeof(sappyblock);
-
-		// set addresses to the driver block
-		mput4l((offset_m4a_init != 0) ? gba_offset_to_address(offset_m4a_init | 1) : 0, &sappyblock[SAPPY_GSF_INIT_OFFSET]);
-		mput4l((offset_m4a_selectsong != 0) ? gba_offset_to_address(offset_m4a_selectsong | 1) : 0, &sappyblock[SAPPY_GSF_SELECTSONG_OFFSET]);
-		mput4l((offset_m4a_main != 0) ? gba_offset_to_address(offset_m4a_main | 1) : 0, &sappyblock[SAPPY_GSF_MAIN_OFFSET]);
-		mput4l((offset_m4a_vsync != 0) ? gba_offset_to_address(offset_m4a_vsync | 1) : 0, &sappyblock[SAPPY_GSF_VSYNC_OFFSET]);
+		gsf_driver_size = driver->GetDriverSize(driver_params);
 	}
 	else
 	{
-		gsf_driver_block = manual_gsf_driver;
 		gsf_driver_size = manual_gsf_driver_size;
-		gsflibstat = GSFLIB_OK;
 	}
 
 	// determine gsf driver offset
 	size_t driver_min_free_space = 0x200;
 	size_t driver_margin_size = (gsf_driver_size < driver_min_free_space) ?
 		(driver_min_free_space - gsf_driver_size) : 0;
-	if (manual_offset_gsf_driver == GSF_INVALID_OFFSET)
+	uint32_t offset_gsf_driver = GSF_INVALID_OFFSET;
+	if (manual_gsf_driver_offset == GSF_INVALID_OFFSET)
 	{
 		// auto-search free block
 		offset_gsf_driver = find_free_space(gsf_driver_size + driver_margin_size);
@@ -1013,9 +541,9 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, boo
 	else
 	{
 		// use specified offset, check the address range
-		if (manual_offset_gsf_driver + gsf_driver_size <= rom_size)
+		if (manual_gsf_driver_offset + gsf_driver_size <= rom_size)
 		{
-			offset_gsf_driver = manual_offset_gsf_driver;
+			offset_gsf_driver = manual_gsf_driver_offset;
 		}
 		else
 		{
@@ -1026,58 +554,85 @@ Saptapper::EGsfLibResult Saptapper::make_gsflib(const std::string& gsf_path, boo
 	// check gsf driver offset
 	if (offset_gsf_driver == GSF_INVALID_OFFSET)
 	{
-		return GSFLIB_NOSPACE;
+		sprintf(msg, "Could not find a free space for relocatable driver block (%u bytes)", gsf_driver_size);
+		m_message = msg;
+		return NULL;
 	}
-
-	// determine minigsf offset
-	if (manual_minigsf_offset == GSF_INVALID_OFFSET)
+	// set driver offset to given variable
+	if (ptr_driver_offset != NULL)
 	{
-		offset_minigsf_number = offset_gsf_driver + SAPPY_GSF_MINIGSF_OFFSET;
-	}
-	else
-	{
-		offset_minigsf_number = (uint32_t) (offset_gsf_driver + manual_minigsf_offset);
+		*ptr_driver_offset = offset_gsf_driver;
 	}
 
 	// install driver temporarily
-	install_driver(gsf_driver_block, offset_gsf_driver, gsf_driver_size);
+	if (manual_gsf_driver == NULL)
+	{
+		make_backup_for_driver(offset_gsf_driver, gsf_driver_size);
+
+		if (!driver->InstallDriver(rom, rom_size, offset_gsf_driver, driver_params))
+		{
+			m_message = driver->message();
+			uninstall_driver();
+			return NULL;
+		}
+	}
+	else
+	{
+		install_driver(manual_gsf_driver, offset_gsf_driver, gsf_driver_size);
+	}
 
 	// create gba/gsflib file
 	put_gsf_exe_header(rom_exe, GBA_ENTRYPOINT, GBA_ENTRYPOINT, (uint32_t) rom_size);
 	if (prefer_gba_rom)
 	{
 		FILE* gba_file = NULL;
-
-		gsflibstat = GSFLIB_OTFILE_E;
+		bool write_gba_succeeded = false;
 
 		gba_file = fopen(gsf_path.c_str(), "wb");
 		if (gba_file != NULL)
 		{
 			if (fwrite(rom, 1, rom_size, gba_file) == rom_size)
 			{
-				gsflibstat = GSFLIB_OK;
+				write_gba_succeeded = true;
 			}
 			fclose(gba_file);
+		}
+
+		if (!write_gba_succeeded)
+		{
+			sprintf(msg, "%s - File write error", gsf_path.c_str());
+			m_message = msg;
+			uninstall_driver();
+			return NULL;
 		}
 	}
 	else
 	{
 		if (!exe2gsf(gsf_path, rom_exe, GSF_EXE_HEADER_SIZE + rom_size))
 		{
-			gsflibstat = GSFLIB_OTFILE_E;
+			sprintf(msg, "%s - File write error", gsf_path.c_str());
+			m_message = msg;
+			uninstall_driver();
+			return NULL;
 		}
 	}
 
 	// uninstall driver block
 	uninstall_driver();
 
-	return gsflibstat;
+	return driver;
 }
 
 bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 {
+	std::map<std::string, VgmDriverParam> driver_params;
+	return make_gsf_set(rom_path, prefer_gba_rom, driver_params);
+}
+
+bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, std::map<std::string, VgmDriverParam>& driver_params)
+{
+	char msg[2048];
 	bool result = false;
-	EGsfLibResult gsflibstat = GSFLIB_OK;
 	std::map<std::string, std::string> tags;
 
 	// get separator positions
@@ -1103,7 +658,9 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 	// load ROM image
 	if (!load_rom_file(rom_path))
 	{
-		fprintf(stderr, "Error: %s - Could not be loaded\n", rom_path.c_str());
+		sprintf(msg, "%s - Could not be loaded", rom_path.c_str());
+		m_message = msg;
+		fprintf(stderr, "%s\n", m_message.c_str());
 		return false;
 	}
 
@@ -1121,120 +678,53 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 		_mkdir(gsf_dir.c_str());
 		if (!path_isdir(gsf_dir.c_str()))
 		{
-			fprintf(stderr, "Error: %s - Directory could not be created\n", gsf_dir.c_str());
+			sprintf(msg, "%s - Directory could not be created\n", gsf_dir.c_str());
+			m_message = msg;
+			fprintf(stderr, "%s\n", m_message.c_str());
 			close_rom();
 			return false;
 		}
 	}
 
 	// create gsflib
-	gsflibstat = make_gsflib(gsflib_path, prefer_gba_rom);
+	uint32_t offset_gsf_driver;
+	std::string gsflib_error;
+	VgmDriver * driver = make_gsflib(gsflib_path, prefer_gba_rom, driver_params, &offset_gsf_driver);
+	if (driver == NULL)
+	{
+		m_message = rom_path + " - " + "No driver matches\n" + message();
+		fprintf(stderr, "%s\n", m_message.c_str());
+		_rmdir(gsf_dir.c_str());
+		close_rom();
+		return false;
+	}
 
-	// determine minigsf constants
-	uint32_t minigsfoffset = offset_minigsf_number;
+	// show driver params
+	if (!quiet && manual_gsf_driver == NULL)
+	{
+		print_driver_params(driver_params);
+	}
+
+	// determine minigsf offset
+	uint32_t offset_minigsf_number;
+	if (manual_minigsf_offset == GSF_INVALID_OFFSET)
+	{
+		offset_minigsf_number = offset_gsf_driver + driver->GetMinixsfOffset(driver_params);
+	}
+	else
+	{
+		offset_minigsf_number = (uint32_t) (offset_gsf_driver + manual_minigsf_offset);
+	}
+
+	// determine minigsf count
 	unsigned int minigsfcount = 0;
-	unsigned int minigsferrors = 0;
-	unsigned int minigsfdupes = 0;
-
 	if (manual_minigsf_count == GSF_INVALID_OFFSET)
 	{
-		if (offset_m4a_songtable != GSF_INVALID_OFFSET)
-		{
-			minigsfcount = get_song_count(offset_m4a_songtable);
-		}
+		minigsfcount = driver->GetSongCount(rom, rom_size, driver_params);
 	}
 	else
 	{
 		minigsfcount = manual_minigsf_count;
-	}
-
-	// show address info
-	if (!quiet)
-	{
-		if (offset_m4a_init == 0)
-		{
-			printf("- sappy_init = null\n");
-		}
-		else if (offset_m4a_init != GSF_INVALID_OFFSET)
-		{
-			printf("- sappy_init = 0x%08X\n", gba_offset_to_address(offset_m4a_init));
-		}
-		else
-		{
-			printf("- sappy_init = undefined\n");
-		}
-
-		if (offset_m4a_main == 0)
-		{
-			printf("- sappy_main = null\n");
-		}
-		else if (offset_m4a_main != GSF_INVALID_OFFSET)
-		{
-			printf("- sappy_main = 0x%08X\n", gba_offset_to_address(offset_m4a_main));
-		}
-		else
-		{
-			printf("- sappy_main = undefined\n");
-		}
-
-		if (offset_m4a_selectsong == 0)
-		{
-			printf("- sappy_selectsongbynum = null\n");
-		}
-		else if (offset_m4a_selectsong != GSF_INVALID_OFFSET)
-		{
-			printf("- sappy_selectsongbynum = 0x%08X\n", gba_offset_to_address(offset_m4a_selectsong));
-		}
-		else
-		{
-			printf("- sappy_selectsongbynum = undefined\n");
-		}
-
-		if (offset_m4a_vsync == 0)
-		{
-			printf("- sappy_vsync = null\n");
-		}
-		else if (offset_m4a_vsync != GSF_INVALID_OFFSET)
-		{
-			printf("- sappy_vsync = 0x%08X\n", gba_offset_to_address(offset_m4a_vsync));
-		}
-		else
-		{
-			printf("- sappy_vsync = undefined\n");
-		}
-
-		if (offset_m4a_songtable == 0)
-		{
-			printf("- sappy_songs = null\n");
-		}
-		else if (offset_m4a_songtable != GSF_INVALID_OFFSET)
-		{
-			printf("- sappy_songs = 0x%08X\n", gba_offset_to_address(offset_m4a_songtable));
-		}
-		else
-		{
-			printf("- sappy_songs = undefined\n");
-		}
-
-		if (offset_gsf_driver != GSF_INVALID_OFFSET)
-		{
-			printf("- gsf_driver_block = 0x%08X\n", gba_offset_to_address(offset_gsf_driver));
-		}
-		else
-		{
-			printf("- gsf_driver_block = undefined\n");
-		}
-
-		printf("\n");
-	}
-
-	// gsflib succeeded?
-	if (gsflibstat != GSFLIB_OK)
-	{
-		fprintf(stderr, "Error: %s - %s\n", rom_path.c_str(), get_gsflib_error(gsflibstat));
-		_rmdir(gsf_dir.c_str());
-		close_rom();
-		return false;
 	}
 
 	// determine minigsf size
@@ -1262,6 +752,9 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 		}
 	}
 
+	unsigned int minigsferrors = 0;
+	unsigned int minigsfdupes = 0;
+
 	result = true;
 	if (!prefer_gba_rom)
 	{
@@ -1273,9 +766,9 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom)
 			sprintf(minigsfname, "%s.%04d.minigsf", rom_basename.c_str(), minigsfindex);
 			std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
 
-			if (!is_song_duplicate(offset_m4a_songtable, minigsfindex))
+			if (!driver->IsSongDuplicate(rom, rom_size, driver_params, minigsfindex))
 			{
-				if (!make_minigsf(minigsf_path, gba_offset_to_address(minigsfoffset), minigsfsize, minigsfindex, tags))
+				if (!make_minigsf(minigsf_path, gba_offset_to_address(offset_minigsf_number), minigsfsize, minigsfindex, tags))
 				{
 					minigsferrors++;
 				}
@@ -1368,6 +861,7 @@ int main(int argc, char **argv)
 	unsigned long ul;
 
 	bool prefer_gba_rom = false;
+	std::map<std::string, VgmDriverParam> user_driver_params;
 
 	app.set_quiet(false);
 
@@ -1447,11 +941,11 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 					return EXIT_FAILURE;
 				}
-			}
-			// GBA ROM address to offset
-			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
-			{
-				ul &= 0x01FFFFFF;
+				// GBA ROM offset to address
+				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				{
+					ul |= 0x8000000;
+				}
 			}
 			app.set_gsf_driver_offset(ul);
 			argi++;
@@ -1475,13 +969,13 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 					return EXIT_FAILURE;
 				}
+				// GBA ROM offset to address
+				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				{
+					ul |= 0x8000000;
+				}
 			}
-			// GBA ROM address to offset
-			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
-			{
-				ul &= 0x01FFFFFF;
-			}
-			app.set_m4a_selectsong(ul);
+			user_driver_params["sub_selectsong"] = VgmDriverParam(ul, true);
 			argi++;
 		}
 		else if (strcmp(argv[argi], "-ot") == 0 || strcmp(argv[argi], "--offset-songtable") == 0)
@@ -1503,13 +997,13 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 					return EXIT_FAILURE;
 				}
+				// GBA ROM offset to address
+				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				{
+					ul |= 0x8000000;
+				}
 			}
-			// GBA ROM address to offset
-			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
-			{
-				ul &= 0x01FFFFFF;
-			}
-			app.set_m4a_songtable(ul);
+			user_driver_params["_array_songs"] = VgmDriverParam(ul, true);
 			argi++;
 		}
 		else if (strcmp(argv[argi], "-om") == 0 || strcmp(argv[argi], "--offset-main") == 0)
@@ -1531,13 +1025,13 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 					return EXIT_FAILURE;
 				}
+				// GBA ROM offset to address
+				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				{
+					ul |= 0x8000000;
+				}
 			}
-			// GBA ROM address to offset
-			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
-			{
-				ul &= 0x01FFFFFF;
-			}
-			app.set_m4a_main(ul);
+			user_driver_params["sub_main"] = VgmDriverParam(ul, true);
 			argi++;
 		}
 		else if (strcmp(argv[argi], "-oi") == 0 || strcmp(argv[argi], "--offset-init") == 0)
@@ -1559,13 +1053,13 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 					return EXIT_FAILURE;
 				}
+				// GBA ROM offset to address
+				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				{
+					ul |= 0x8000000;
+				}
 			}
-			// GBA ROM address to offset
-			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
-			{
-				ul &= 0x01FFFFFF;
-			}
-			app.set_m4a_init(ul);
+			user_driver_params["sub_init"] = VgmDriverParam(ul, true);
 			argi++;
 		}
 		else if (strcmp(argv[argi], "-ov") == 0 || strcmp(argv[argi], "--offset-vsync") == 0)
@@ -1587,13 +1081,13 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 					return EXIT_FAILURE;
 				}
+				// GBA ROM offset to address
+				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				{
+					ul |= 0x8000000;
+				}
 			}
-			// GBA ROM address to offset
-			if (ul >= 0x08000000 && ul <= 0x09FFFFFF)
-			{
-				ul &= 0x01FFFFFF;
-			}
-			app.set_m4a_vsync(ul);
+			user_driver_params["sub_vsync"] = VgmDriverParam(ul, true);
 			argi++;
 		}
 		else if (strcmp(argv[argi], "--tag-gsfby") == 0)
@@ -1635,7 +1129,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Error: Insufficient space found\n");
 				return EXIT_FAILURE;
 			}
-			printf("0x%08X\n", Saptapper::gba_offset_to_address(offset));
+			printf("0x%08X\n", gba_offset_to_address(offset));
 
 			argi++;
 			return EXIT_SUCCESS;
@@ -1665,7 +1159,8 @@ int main(int argc, char **argv)
 	result = true;
 	for (; argi < argc; argi++)
 	{
-		result = result && app.make_gsf_set(argv[argi], prefer_gba_rom);
+		std::map<std::string, VgmDriverParam> driver_params(user_driver_params);
+		result = result && app.make_gsf_set(argv[argi], prefer_gba_rom, driver_params);
 	}
 	return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }

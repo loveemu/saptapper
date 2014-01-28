@@ -160,14 +160,44 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BytePattern.cpp" />
+    <ClCompile Include="Mp2kDriver.cpp" />
     <ClCompile Include="saptapper.cpp" />
+    <ClCompile Include="VgmDriverParam.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BytePattern.h" />
     <ClInclude Include="cbyteio.h" />
     <ClInclude Include="cpath.h" />
-    <ClInclude Include="sappy-gsf.h" />
+    <ClInclude Include="Mp2kDriver.h" />
     <ClInclude Include="saptapper.h" />
+    <ClInclude Include="VgmDriver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="asm\sappy-gsf.s">
+      <FileType>Document</FileType>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RelativeDir)%(Filename).h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RelativeDir)%(Filename).h</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </AdditionalInputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">cd C:\devkitadv-r5-beta-3
+call cmd-rc.bat
+cd $(ProjectDir)
+gcc -o $(IntDir)%(Filename).gba %(FullPath)
+objcopy -O binary $(IntDir)%(Filename).gba
+bin\bincrop -o $(IntDir)%(Filename).bin $(IntDir)%(Filename).gba __DRIVER_START__ ___DRIVER_END___
+bin\bin2c -n driver_block -o %(Outputs) $(IntDir)%(Filename).bin
+</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">cd C:\devkitadv-r5-beta-3
+call cmd-rc.bat
+cd $(ProjectDir)
+gcc -o $(IntDir)%(Filename).gba %(FullPath)
+objcopy -O binary $(IntDir)%(Filename).gba
+bin\bincrop -o $(IntDir)%(Filename).bin $(IntDir)%(Filename).gba __DRIVER_START__ ___DRIVER_END___
+bin\bin2c -n driver_block -o %(Outputs) $(IntDir)%(Filename).bin
+</Command>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
