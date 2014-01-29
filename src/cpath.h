@@ -170,14 +170,22 @@ static char *path_getabspath(const char *path, char *absolute_path)
 	char *szFilePart;
 	return GetFullPathNameA(path, PATH_MAX, absolute_path, &szFilePart) != 0 ? absolute_path : NULL;
 #else
-	// realpath() can resolve path only if the path exists. For example,
-	// "/tmp/non-existing-directory-will-fail/../foo.bar" will return wrong result.
-	// Therefore, we return just a simple absolute path here. What a pity.
 	if (path == NULL || absolute_path == NULL)
 	{
 		errno = EINVAL;
 		return NULL;
 	}
+
+	// realpath() can resolve path only if the path exists. For example,
+	// "/tmp/non-existing-directory-will-fail/../foo.bar" will return NULL,
+	// and the content of output buffer will become undefined data.
+	if (realpath(path, absolute_path) != 0)
+	{
+		return absolute_path;
+	}
+
+	// Oh well, realpath() failed,
+	// then construct a simple absolute path and return it.
 	if (path[0] == '/')
 	{
 		strcpy(absolute_path, path);
