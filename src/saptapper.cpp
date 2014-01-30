@@ -97,7 +97,7 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 	z.zalloc = Z_NULL;
 	z.zfree = Z_NULL;
 	z.opaque = Z_NULL;
-	if (deflateInit(&z, Z_DEFAULT_COMPRESSION) != Z_OK)
+	if (deflateInit(&z, Z_BEST_COMPRESSION) != Z_OK)
 	{
 		return false;
 	}
@@ -107,10 +107,18 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 	z.avail_in = (uInt) exe_size;
 	z.next_out = zbuf;
 	z.avail_out = CHUNK;
-	zflush = Z_FINISH;
 	zcrc = crc32(0L, Z_NULL, 0);
 	do
 	{
+		if (z.avail_in == 0)
+		{
+			zflush = Z_FINISH;
+		}
+		else
+		{
+			zflush = Z_NO_FLUSH;
+		}
+
 		// compress
 		zret = deflate(&z, zflush);
 		if (zret != Z_STREAM_END && zret != Z_OK)
