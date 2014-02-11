@@ -12,7 +12,7 @@ Caitsith2's original version can be found at GSF Central
 Downloads
 ---------
 
-- [saptapper-20140119.7z](https://github.com/loveemu/saptapper/releases/download/v1.0-20140119/saptapper-20140119.7z)
+- [Latest release](https://github.com/loveemu/saptapper/releases/latest)
 - [saptapper-20140117.7z](https://github.com/loveemu/saptapper/releases/download/v1.0-20140119/saptapper-20140117.7z) (all ripping routines are identical to unaltered version)
 
 Usage
