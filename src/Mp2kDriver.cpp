@@ -67,7 +67,7 @@ void Mp2kDriver::FindDriverParams(const uint8_t * rom, size_t rom_size, std::map
 	uint32_t sub_selectsong = GSF_INVALID_OFFSET;
 	if (params.count("sub_selectsong") == 0)
 	{
-		sub_selectsong = find_m4a_selectsong(rom, rom_size);
+		sub_selectsong = find_m4a_selectsong(rom, (uint32_t) rom_size);
 		if (sub_selectsong == GSF_INVALID_OFFSET)
 		{
 			return;
@@ -94,7 +94,7 @@ void Mp2kDriver::FindDriverParams(const uint8_t * rom, size_t rom_size, std::map
 	uint32_t array_songs = GSF_INVALID_OFFSET;
 	if (params.count("_array_songs") == 0)
 	{
-		array_songs = find_m4a_songtable(rom, rom_size, sub_selectsong);
+		array_songs = find_m4a_songtable(rom, (uint32_t) rom_size, sub_selectsong);
 		if (array_songs != GSF_INVALID_OFFSET)
 		{
 			params["_array_songs"] = VgmDriverParam(gba_offset_to_address(array_songs), true);
@@ -116,7 +116,7 @@ void Mp2kDriver::FindDriverParams(const uint8_t * rom, size_t rom_size, std::map
 	uint32_t sub_main = GSF_INVALID_OFFSET;
 	if (params.count("sub_main") == 0)
 	{
-		sub_main = find_m4a_main(rom, rom_size, sub_selectsong);
+		sub_main = find_m4a_main(rom, (uint32_t) rom_size, sub_selectsong);
 		if (sub_main == GSF_INVALID_OFFSET)
 		{
 			return;
@@ -143,7 +143,7 @@ void Mp2kDriver::FindDriverParams(const uint8_t * rom, size_t rom_size, std::map
 	uint32_t sub_init = GSF_INVALID_OFFSET;
 	if (params.count("sub_init") == 0)
 	{
-		sub_init = find_m4a_init(rom, rom_size, sub_main);
+		sub_init = find_m4a_init(rom, (uint32_t) rom_size, sub_main);
 		if (sub_init == GSF_INVALID_OFFSET)
 		{
 			return;
@@ -170,7 +170,7 @@ void Mp2kDriver::FindDriverParams(const uint8_t * rom, size_t rom_size, std::map
 	uint32_t sub_vsync = GSF_INVALID_OFFSET;
 	if (params.count("sub_vsync") == 0)
 	{
-		sub_vsync = find_m4a_vsync(rom, rom_size, sub_init);
+		sub_vsync = find_m4a_vsync(rom, (uint32_t) rom_size, sub_init);
 		if (sub_vsync == GSF_INVALID_OFFSET)
 		{
 			return;
@@ -272,7 +272,7 @@ int Mp2kDriver::GetSongCount(const uint8_t * rom, size_t rom_size, const std::ma
 		return 0;
 	}
 	array_songs = gba_address_to_offset(array_songs);
-	return m4a_get_song_count(rom, rom_size, array_songs);
+	return m4a_get_song_count(rom, (uint32_t) rom_size, array_songs);
 }
 
 // Return offset of song index variable in relocatable driver block.
@@ -330,7 +330,7 @@ bool Mp2kDriver::IsSongDuplicate(const uint8_t * rom, size_t rom_size, const std
 		return false;
 	}
 	array_songs = gba_address_to_offset(array_songs);
-	return m4a_is_song_duplicate(rom, rom_size, array_songs, song);
+	return m4a_is_song_duplicate(rom, (uint32_t) rom_size, array_songs, song);
 }
 
 uint32_t Mp2kDriver::find_m4a_selectsong(const uint8_t * rom, uint32_t rom_size)

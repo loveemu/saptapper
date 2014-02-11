@@ -151,7 +151,7 @@ public:
 
 		if (size > data.size())
 		{
-			size = data.size();
+			size = (uint32_t) data.size();
 		}
 
 		memcpy(buf, data.c_str(), size);
