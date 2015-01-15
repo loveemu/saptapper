@@ -18,7 +18,7 @@ Downloads
 Usage
 -----
 
-Syntax: saptapper <GBA Files>
+Syntax: saptapper [GBA Files]
 
 ### Options ###
 
