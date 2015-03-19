@@ -5,7 +5,7 @@ CXX = g++
 CXXFLAGS = -O2 -Wall
 LDFLAGS = -lm -lz
 TARGET = saptapper
-SRCS = $(TARGET).cpp Mp2kDriver.cpp VgmDriverParam.cpp BytePattern.cpp
+SRCS = $(TARGET).cpp Mp2kDriver.cpp NatsumeDriver.cpp VgmDriverParam.cpp BytePattern.cpp
 OBJS := $(SRCS:.cpp=.o)
 
 .PHONY: all clean

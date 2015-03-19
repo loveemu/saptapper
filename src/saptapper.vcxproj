@@ -181,6 +181,7 @@
   <ItemGroup>
     <ClCompile Include="BytePattern.cpp" />
     <ClCompile Include="Mp2kDriver.cpp" />
+    <ClCompile Include="NatsumeDriver.cpp" />
     <ClCompile Include="saptapper.cpp" />
     <ClCompile Include="VgmDriverParam.cpp" />
   </ItemGroup>
@@ -189,6 +190,7 @@
     <ClInclude Include="cbyteio.h" />
     <ClInclude Include="cpath.h" />
     <ClInclude Include="Mp2kDriver.h" />
+    <ClInclude Include="NatsumeDriver.h" />
     <ClInclude Include="saptapper.h" />
     <ClInclude Include="VgmDriver.h" />
   </ItemGroup>
@@ -261,6 +263,75 @@ bin\bin2c -n driver_block -o %(RelativeDir)%(Filename).h $(IntDir)%(Filename).bi
 if errorlevel 1 goto END
 :END
 </Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(RelativeDir)%(Filename).h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(RelativeDir)%(Filename).h</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="asm\natsume-gsf.s">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">cd C:\devkitadv-r5-beta-3
+if errorlevel 1 goto END
+call cmd-rc.bat
+if errorlevel 1 goto END
+cd $(ProjectDir)
+gcc -o $(IntDir)%(Filename).gba %(FullPath)
+if errorlevel 1 goto END
+objcopy -O binary $(IntDir)%(Filename).gba
+if errorlevel 1 goto END
+bin\bincrop -o $(IntDir)%(Filename).bin $(IntDir)%(Filename).gba __DRIVER_START__ ___DRIVER_END___
+if errorlevel 1 goto END
+bin\bin2c -n driver_block -o %(RelativeDir)%(Filename).h $(IntDir)%(Filename).bin
+if errorlevel 1 goto END
+:END
+</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">cd C:\devkitadv-r5-beta-3
+if errorlevel 1 goto END
+call cmd-rc.bat
+if errorlevel 1 goto END
+cd $(ProjectDir)
+gcc -o $(IntDir)%(Filename).gba %(FullPath)
+if errorlevel 1 goto END
+objcopy -O binary $(IntDir)%(Filename).gba
+if errorlevel 1 goto END
+bin\bincrop -o $(IntDir)%(Filename).bin $(IntDir)%(Filename).gba __DRIVER_START__ ___DRIVER_END___
+if errorlevel 1 goto END
+bin\bin2c -n driver_block -o %(RelativeDir)%(Filename).h $(IntDir)%(Filename).bin
+if errorlevel 1 goto END
+:END
+</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cd C:\devkitadv-r5-beta-3
+if errorlevel 1 goto END
+call cmd-rc.bat
+if errorlevel 1 goto END
+cd $(ProjectDir)
+gcc -o $(IntDir)%(Filename).gba %(FullPath)
+if errorlevel 1 goto END
+objcopy -O binary $(IntDir)%(Filename).gba
+if errorlevel 1 goto END
+bin\bincrop -o $(IntDir)%(Filename).bin $(IntDir)%(Filename).gba __DRIVER_START__ ___DRIVER_END___
+if errorlevel 1 goto END
+bin\bin2c -n driver_block -o %(RelativeDir)%(Filename).h $(IntDir)%(Filename).bin
+if errorlevel 1 goto END
+:END
+</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cd C:\devkitadv-r5-beta-3
+if errorlevel 1 goto END
+call cmd-rc.bat
+if errorlevel 1 goto END
+cd $(ProjectDir)
+gcc -o $(IntDir)%(Filename).gba %(FullPath)
+if errorlevel 1 goto END
+objcopy -O binary $(IntDir)%(Filename).gba
+if errorlevel 1 goto END
+bin\bincrop -o $(IntDir)%(Filename).bin $(IntDir)%(Filename).gba __DRIVER_START__ ___DRIVER_END___
+if errorlevel 1 goto END
+bin\bin2c -n driver_block -o %(RelativeDir)%(Filename).h $(IntDir)%(Filename).bin
+if errorlevel 1 goto END
+:END
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RelativeDir)%(Filename).h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RelativeDir)%(Filename).h</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(RelativeDir)%(Filename).h</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(RelativeDir)%(Filename).h</Outputs>
     </CustomBuild>

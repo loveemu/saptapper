@@ -10,6 +10,7 @@
 
 #include "VgmDriver.h"
 #include "Mp2kDriver.h"
+#include "NatsumeDriver.h"
 #include "BytePattern.h"
 
 #define PSF_SIGNATURE	"PSF"
@@ -122,6 +123,7 @@ public:
 		prefer_larger_free_space(false)
 	{
 		drivers.push_back(new Mp2kDriver());
+		drivers.push_back(new NatsumeDriver());
 	}
 
 	~Saptapper()

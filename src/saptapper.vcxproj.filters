@@ -30,6 +30,9 @@
     <ClCompile Include="VgmDriverParam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NatsumeDriver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="saptapper.h">
@@ -50,9 +53,15 @@
     <ClInclude Include="Mp2kDriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NatsumeDriver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="asm\sappy-gsf.s">
+      <Filter>Source Files\asm</Filter>
+    </CustomBuild>
+    <CustomBuild Include="asm\natsume-gsf.s">
       <Filter>Source Files\asm</Filter>
     </CustomBuild>
   </ItemGroup>
