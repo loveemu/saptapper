@@ -31,12 +31,6 @@
 #include "cbyteio.h"
 #include "cpath.h"
 
-#define SAPPY_GSF_INIT_OFFSET       0x00D8
-#define SAPPY_GSF_SELECTSONG_OFFSET 0x00DC
-#define SAPPY_GSF_MAIN_OFFSET       0x00E0
-#define SAPPY_GSF_VSYNC_OFFSET      0x00E4
-#define SAPPY_GSF_MINIGSF_OFFSET    0x00E8
-
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
