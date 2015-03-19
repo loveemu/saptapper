@@ -850,6 +850,10 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, s
 	if (manual_minigsf_count == GSF_INVALID_OFFSET)
 	{
 		minigsfcount = driver->GetSongCount(rom, rom_size, driver_params);
+		if (minigsfcount == 0) {
+			// set default song count
+			minigsfcount = 256;
+		}
 	}
 	else
 	{
