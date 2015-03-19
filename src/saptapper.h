@@ -3,6 +3,7 @@
 #define SAPTAPPER_H_INCLUDED
 
 #include <stdint.h>
+#include <assert.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -43,17 +44,45 @@ static inline uint32_t gba_offset_to_address(uint32_t offset)
 	return 0x08000000 | (offset & 0x01FFFFFF);
 }
 
+static inline uint32_t make_arm_branch(uint32_t current_address, uint32_t destination_address)
+{
+	assert(current_address % 4 == 0 && destination_address % 4 == 0);
+	int32_t offset = (destination_address - (current_address + 8)) / 4;
+	return 0xEA000000 | (offset & 0xFFFFFF);
+}
+
+static inline bool is_arm_branch(uint32_t instruction)
+{
+	return (instruction & 0xFF000000) == 0xEA000000;
+}
+
+static inline uint32_t get_arm_branch_destination(uint32_t current_address, uint32_t instruction)
+{
+	if ((instruction & 0x0A000000) != 0x0A000000) {
+		return 0;
+	}
+
+	int32_t offset = (instruction & 0xFFFFFF);
+	if (offset & 0x800000) {
+		offset |= ~0xFFFFFF;
+	}
+
+	return current_address + 8 + (offset * 4);
+}
+
 class Saptapper
 {
 private:
 	uint8_t* rom;
 	uint8_t* rom_exe;
 	size_t rom_size;
+	uint32_t rom_main_ptr_offset;
 
 	std::vector<VgmDriver*> drivers;
 
 	// create backup of driver location
-	uint32_t rom_patch_entrypoint_backup;	// ARM B _start
+	uint32_t rom_patch_entrypoint_offset;
+	uint32_t rom_patch_entrypoint_backup;
 	uint8_t* rom_patch_backup;
 	uint32_t rom_patch_offset;
 	size_t rom_patch_size;
@@ -63,6 +92,8 @@ private:
 	size_t manual_gsf_driver_size;
 	uint32_t manual_minigsf_offset;
 	uint32_t manual_minigsf_count;
+	bool manual_driver_is_thumb;
+	bool manual_driver_is_main;
 
 	std::string tag_gsfby;
 
@@ -74,6 +105,8 @@ public:
 		rom(NULL),
 		rom_exe(NULL),
 		rom_size(0),
+		rom_main_ptr_offset(GSF_INVALID_OFFSET),
+		rom_patch_entrypoint_offset(0),
 		rom_patch_entrypoint_backup(0),
 		rom_patch_backup(NULL),
 		rom_patch_offset(GSF_INVALID_OFFSET),
@@ -83,6 +116,8 @@ public:
 		manual_gsf_driver_size(0),
 		manual_minigsf_offset(GSF_INVALID_OFFSET),
 		manual_minigsf_count(GSF_INVALID_OFFSET),
+		manual_driver_is_thumb(false),
+		manual_driver_is_main(false),
 		quiet(true),
 		prefer_larger_free_space(false)
 	{
@@ -115,12 +150,18 @@ public:
 		manual_minigsf_count = count;
 	}
 
-	bool set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset);
-	bool set_gsf_driver_file(const std::string& driver_path, uint32_t minigsf_offset);
+	inline void set_manual_driver_is_main(bool use_main)
+	{
+		manual_driver_is_main = use_main;
+	}
+
+	bool set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset, bool thumb, bool use_main);
+	bool set_gsf_driver_file(const std::string& driver_path, uint32_t minigsf_offset, bool thumb, bool use_main);
 	void unset_gsf_driver(void);
 
 	bool load_rom(uint8_t* rom, size_t rom_size);
 	bool load_rom_file(const std::string& rom_path);
+	void scan_main_ptr(void);
 	void close_rom(void);
 
 	uint32_t find_free_space(size_t size, uint8_t filler);
@@ -152,8 +193,8 @@ public:
 	}
 
 private:
-	void make_backup_for_driver(uint32_t offset, size_t size);
-	bool install_driver(const uint8_t* driver_block, uint32_t offset, size_t size);
+	void make_backup_for_driver(uint32_t offset, size_t size, bool use_main);
+	bool install_driver(const uint8_t* driver_block, uint32_t offset, size_t size, bool thumb, bool use_main);
 	void uninstall_driver(void);
 
 	void print_driver_params(const std::map<std::string, VgmDriverParam>& driver_params) const;

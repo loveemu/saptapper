@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2014-01-27]"
+#define APP_VER		"[2015-03-19]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 #include <string>
 #include <sstream>
 #include <map>
@@ -199,9 +200,14 @@ bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t address, size
 	return exe2gsf(gsf_path, exe, GSF_EXE_HEADER_SIZE + size, tags);
 }
 
-bool Saptapper::set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset)
+bool Saptapper::set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t minigsf_offset, bool thumb, bool use_main)
 {
 	unset_gsf_driver();
+
+	if (!use_main && thumb)
+	{
+		return false;
+	}
 
 	if (driver_block == NULL || size == 0 || size > MAX_GBA_ROM_SIZE || minigsf_offset >= size)
 	{
@@ -216,13 +222,20 @@ bool Saptapper::set_gsf_driver(uint8_t* driver_block, size_t size, uint32_t mini
 	memcpy(manual_gsf_driver, driver_block, size);
 	manual_gsf_driver_size = size;
 	manual_minigsf_offset = minigsf_offset;
+	manual_driver_is_thumb = thumb;
+	manual_driver_is_main = use_main;
 
 	return true;
 }
 
-bool Saptapper::set_gsf_driver_file(const std::string& driver_path, uint32_t minigsf_offset)
+bool Saptapper::set_gsf_driver_file(const std::string& driver_path, uint32_t minigsf_offset, bool thumb, bool use_main)
 {
 	unset_gsf_driver();
+
+	if (!use_main && thumb)
+	{
+		return false;
+	}
 
 	// check length
 	off_t driver_size_off = path_getfilesize(driver_path.c_str());
@@ -243,6 +256,8 @@ bool Saptapper::set_gsf_driver_file(const std::string& driver_path, uint32_t min
 	manual_gsf_driver = new uint8_t[driver_size];
 	manual_gsf_driver_size = driver_size;
 	manual_minigsf_offset = minigsf_offset;
+	manual_driver_is_thumb = thumb;
+	manual_driver_is_main = use_main;
 
 	// read the file
 	if (fread(manual_gsf_driver, 1, driver_size, driver_file) != driver_size)
@@ -285,6 +300,8 @@ bool Saptapper::load_rom(uint8_t* rom, size_t rom_size)
 	// read ROM
 	memcpy(this->rom, rom, rom_size);
 
+	scan_main_ptr();
+
 	return true;
 }
 
@@ -321,7 +338,65 @@ bool Saptapper::load_rom_file(const std::string& rom_path)
 	}
 
 	fclose(rom_file);
+
+	scan_main_ptr();
+
 	return true;
+}
+
+void Saptapper::scan_main_ptr(void)
+{
+	rom_main_ptr_offset = GSF_INVALID_OFFSET;
+
+	uint32_t first_instruction = mget4l(&rom[0]);
+	if (rom_size < 4 || !is_arm_branch(first_instruction)) {
+		return;
+	}
+
+	uint32_t offset_start_function = get_arm_branch_destination(0x08000000, first_instruction) & 0x1FFFFFF;
+
+	// typical startup routine:
+	// MOV             R0, #0x12
+	// MSR             CPSR_cf, R0
+	// LDR             SP, =unk_3007FA0
+	// MOV             R0, #0x1F
+	// MSR             CPSR_cf, R0
+	// LDR             SP, =unk_3007F00
+	// LDR             R1, =dword_3007FFC
+	// ADR             R0, loc_8000104 ; argc
+	// STR             R0, [R1]
+	// LDR             R1, =(main+1) ; argv
+	// MOV             LR, PC
+	// BX              R1 ; main
+	// B               start
+	BytePattern ptn_start(
+		"\x12\x00\xa0\xe3\x00\xf0\x29\xe1"
+		"\x28\xd0\x9f\xe5\x1f\x00\xa0\xe3"
+		"\x00\xf0\x29\xe1\x18\xd0\x9f\xe5"
+		"\x1c\x10\x9f\xe5\x20\x00\x8f\xe2"
+		"\x00\x00\x81\xe5\x14\x10\x9f\xe5"
+		"\x0f\xe0\xa0\xe1\x11\xff\x2f\xe1"
+		"\xf2\xff\xff\xea"
+		,
+		"???x???x"
+		"???x???x"
+		"???x???x"
+		"???x???x"
+		"???x???x"
+		"???x???x"
+		"xxxx"
+		,
+		52);
+
+	if (offset_start_function + ptn_start.length() > rom_size) {
+		return;
+	}
+
+	if (!ptn_start.match(&rom[offset_start_function], rom_size - offset_start_function)) {
+		return;
+	}
+
+	rom_main_ptr_offset = offset_start_function + 0x24 + 8 + (mget4l(&rom[offset_start_function + 0x24]) & 0xFFF);
 }
 
 void Saptapper::close_rom(void)
@@ -337,21 +412,29 @@ void Saptapper::close_rom(void)
 	rom_size = 0;
 }
 
-void Saptapper::make_backup_for_driver(uint32_t offset, size_t size)
+void Saptapper::make_backup_for_driver(uint32_t offset, size_t size, bool use_main)
 {
 	uninstall_driver();
 
 	// allocate memory for backup
 	rom_patch_backup = new uint8_t[size];
 
+	// determine entrypoint
+	if (use_main) {
+		rom_patch_entrypoint_offset = rom_main_ptr_offset;
+	}
+	else {
+		rom_patch_entrypoint_offset = 0;
+	}
+
 	// make a backup of unpatched ROM
-	rom_patch_entrypoint_backup = mget4l(&rom[0]);
+	rom_patch_entrypoint_backup = mget4l(&rom[rom_patch_entrypoint_offset]);
 	memcpy(rom_patch_backup, &rom[offset], size);
 	rom_patch_offset = offset;
 	rom_patch_size = size;
 }
 
-bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, size_t size)
+bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, size_t size, bool thumb, bool use_main)
 {
 	uninstall_driver();
 
@@ -362,11 +445,35 @@ bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, siz
 		return false;
 	}
 
+	if (use_main)
+	{
+		if (rom_main_ptr_offset == GSF_INVALID_OFFSET)
+		{
+			return false;
+		}
+	}
+	else
+	{
+		if (thumb)
+		{
+			return false;
+		}
+	}
+
 	// make a backup of unpatched ROM
-	make_backup_for_driver(offset, size);
+	make_backup_for_driver(offset, size, use_main);
 
 	// patch ROM
-	mput4l(0xEA000000 | (((offset - 8) / 4) & 0xFFFFFF), &rom[0]);
+	if (use_main)
+	{
+		// main function address fetched by LDR
+		mput4l(gba_offset_to_address(offset) | (thumb ? 1 : 0), &rom[rom_main_ptr_offset]);
+	}
+	else
+	{
+		// ARM B instruction
+		mput4l(make_arm_branch(0x08000000, gba_offset_to_address(offset)), &rom[0]);
+	}
 	memcpy(&rom[offset], driver_block, size);
 
 	return true;
@@ -377,7 +484,7 @@ void Saptapper::uninstall_driver(void)
 	if (rom_patch_backup != NULL)
 	{
 		memcpy(&rom[rom_patch_offset], rom_patch_backup, rom_patch_size);
-		mput4l(rom_patch_entrypoint_backup, &rom[0]);
+		mput4l(rom_patch_entrypoint_backup, &rom[rom_patch_entrypoint_offset]);
 
 		delete [] rom_patch_backup;
 		rom_patch_backup = NULL;
@@ -482,6 +589,13 @@ VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_
 	// erase error message
 	m_message = "";
 
+	// set main function pointer address
+	if (rom_main_ptr_offset != GSF_INVALID_OFFSET) {
+		if (driver_params.count("ptr_main") == 0) {
+			driver_params["ptr_main"] = VgmDriverParam(gba_offset_to_address(rom_main_ptr_offset), true);
+		}
+	}
+
 	// determine the driver
 	if (manual_gsf_driver == NULL)
 	{
@@ -573,7 +687,8 @@ VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_
 	// install driver temporarily
 	if (manual_gsf_driver == NULL)
 	{
-		make_backup_for_driver(offset_gsf_driver, gsf_driver_size);
+		bool use_main = driver->GetIfDriverUseMain();
+		make_backup_for_driver(offset_gsf_driver, gsf_driver_size, use_main);
 
 		if (!driver->InstallDriver(rom, rom_size, offset_gsf_driver, driver_params))
 		{
@@ -584,7 +699,7 @@ VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_
 	}
 	else
 	{
-		install_driver(manual_gsf_driver, offset_gsf_driver, gsf_driver_size);
+		install_driver(manual_gsf_driver, offset_gsf_driver, gsf_driver_size, manual_driver_is_thumb, manual_driver_is_main);
 	}
 
 	// create gba/gsflib file
@@ -695,14 +810,22 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, s
 	// create gsflib
 	uint32_t offset_gsf_driver;
 	std::string gsflib_error;
-	VgmDriver * driver = make_gsflib(gsflib_path, prefer_gba_rom, driver_params, &offset_gsf_driver);
-	if (driver == NULL)
+	VgmDriver * driver = NULL;
+	if (manual_gsf_driver == NULL)
 	{
-		m_message = rom_path + " - " + "No driver matches\n" + message();
-		fprintf(stderr, "%s\n", m_message.c_str());
-		_rmdir(gsf_dir.c_str());
-		close_rom();
-		return false;
+		driver = make_gsflib(gsflib_path, prefer_gba_rom, driver_params, &offset_gsf_driver);
+		if (driver == NULL)
+		{
+			m_message = rom_path + " - " + "No driver matches\n" + message();
+			fprintf(stderr, "%s\n", m_message.c_str());
+			_rmdir(gsf_dir.c_str());
+			close_rom();
+			return false;
+		}
+	}
+	else
+	{
+		make_gsflib(gsflib_path, prefer_gba_rom, driver_params, &offset_gsf_driver);
 	}
 
 	// show driver params
@@ -772,7 +895,7 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, s
 			sprintf(minigsfname, "%s.%04d.minigsf", rom_basename.c_str(), minigsfindex);
 			std::string minigsf_path = gsf_dir + PATH_SEPARATOR_STR + minigsfname;
 
-			if (!driver->IsSongDuplicate(rom, rom_size, driver_params, minigsfindex))
+			if (driver == NULL || !driver->IsSongDuplicate(rom, rom_size, driver_params, minigsfindex))
 			{
 				if (!make_minigsf(minigsf_path, gba_offset_to_address(offset_minigsf_number), minigsfsize, minigsfindex, tags))
 				{
@@ -824,7 +947,7 @@ void printUsage(const char *cmd)
 		"-q, --quiet", "Do not output ripping info to STDOUT",
 		"-r", "Output uncompressed GBA ROM",
 		"-n [count]", "Set minigsf count",
-		"-fd, --gsf-driver-file [driver.bin] [0xXXXX]", "Specify relocatable GSF driver block and minigsf offset",
+		"-fd, --gsf-driver-file [driver.bin] [0xXXXX] [arm|thumb] [start|main]", "Specify relocatable GSF driver block and minigsf offset",
 		"-od, --offset-gsf-driver [0xXXXXXXXX]", "Specify the offset of GSF driver block",
 		"-os, --offset-selectsong [0xXXXXXXXX]", "Specify the offset of sappy_selectsong function",
 		"-ot, --offset-songtable [0xXXXXXXXX]", "Specify the offset of song table (well known Sappy offset)",
@@ -910,23 +1033,49 @@ int main(int argc, char **argv)
 		}
 		else if (strcmp(argv[argi], "-fd") == 0 || strcmp(argv[argi], "--gsf-driver-file") == 0)
 		{
-			if (argi + 2 >= argc)
+			if (argi + 4 >= argc)
 			{
 				fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
+
 			ul = strtoul(argv[argi + 2], &strtol_endp, 0);
 			if (strtol_endp != NULL && *strtol_endp != '\0')
 			{
 				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
-			if (!app.set_gsf_driver_file(argv[argi + 1], ul))
+
+			bool thumb;
+			if (strcmp(argv[argi + 3], "arm") == 0) {
+				thumb = false;
+			}
+			else if (strcmp(argv[argi + 3], "thumb") == 0) {
+				thumb = true;
+			}
+			else {
+				fprintf(stderr, "Error: ARM/THUMB type error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+
+			bool use_main;
+			if (strcmp(argv[argi + 4], "start") == 0) {
+				use_main = false;
+			}
+			else if (strcmp(argv[argi + 4], "main") == 0) {
+				use_main = true;
+			}
+			else {
+				fprintf(stderr, "Error: Entrypoint selection error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+
+			if (!app.set_gsf_driver_file(argv[argi + 1], ul, thumb, use_main))
 			{
 				fprintf(stderr, "Error: Unable to set custom driver \"%s\"\n", argv[argi + 1]);
 				return EXIT_FAILURE;
 			}
-			argi += 2;
+			argi += 4;
 		}
 		else if (strcmp(argv[argi], "-od") == 0 || strcmp(argv[argi], "--offset-gsf-driver") == 0)
 		{

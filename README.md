@@ -34,7 +34,7 @@ Syntax: saptapper [GBA Files]
 -n [count]
   : Set minigsf count
 
--fd, --gsf-driver-file [driver.bin] [0xXXXX]
+-fd, --gsf-driver-file [driver.bin] [0xXXXX] [arm|thumb] [start|main]
   : Specify relocatable GSF driver block and minigsf offset
 
 -od, --offset-gsf-driver [0xXXXXXXXX]

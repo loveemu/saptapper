@@ -287,6 +287,11 @@ size_t Mp2kDriver::GetDriverSize(const std::map<std::string, VgmDriverParam>& pa
 	return sizeof(driver_block);
 }
 
+bool Mp2kDriver::GetIfDriverUseMain(void) const
+{
+	return false;
+}
+
 // Install driver block into specified offset.
 bool Mp2kDriver::InstallDriver(uint8_t * rom, size_t rom_size, off_t offset, const std::map<std::string, VgmDriverParam>& params)
 {
@@ -312,7 +317,7 @@ bool Mp2kDriver::InstallDriver(uint8_t * rom, size_t rom_size, off_t offset, con
 	memcpy(&rom[offset], driver_block, driver_size);
 
 	// modify entrypoint
-	mput4l(0xEA000000 | (((offset - 8) / 4) & 0xFFFFFF), &rom[0]);
+	mput4l(make_arm_branch(0x08000000, gba_offset_to_address(offset)), &rom[0]);
 
 	return true;
 }
