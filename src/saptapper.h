@@ -64,11 +64,26 @@ static inline uint32_t get_arm_branch_destination(uint32_t current_address, uint
 	}
 
 	int32_t offset = (instruction & 0xFFFFFF);
-	if (offset & 0x800000) {
+	if ((offset & 0x800000) != 0) {
 		offset |= ~0xFFFFFF;
 	}
 
 	return current_address + 8 + (offset * 4);
+}
+
+static inline bool is_thumb_branch_with_link(uint32_t instruction)
+{
+	return (instruction & 0xF800F800) == 0xF800F000;
+}
+
+static inline uint32_t get_thumb_branch_with_link_destination(uint32_t current_address, uint32_t instruction)
+{
+	int32_t offset = ((instruction & 0x7FF) << 12) | ((instruction & 0x7FF0000) >> 16 << 1);
+	if ((offset & 0x400000) != 0) {
+		offset |= ~0x7FFFFF;
+	}
+
+	return current_address + 4 + offset;
 }
 
 class Saptapper

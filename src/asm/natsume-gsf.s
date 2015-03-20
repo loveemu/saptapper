@@ -7,11 +7,11 @@
 .thumb
 .align 2
 main:
-	ldr	r3, sub_init
+	ldr	r3, sub_init_irq
 	bl	bx_r3
 
-	ldr	r0, ofs_init_2_a0
-	ldr	r3, sub_init_2
+	ldr	r0, ofs_sound_work
+	ldr	r3, sub_init_sound
 	bl	bx_r3
 
 	ldr	r0, num_songindex
@@ -23,13 +23,13 @@ infinite_loop:
 	b	infinite_loop
 
 .align 2
-sub_init:
+sub_init_irq:
 	.word	0
 
-sub_init_2:
+sub_init_sound:
 	.word	0
 
-ofs_init_2_a0:
+ofs_sound_work:
 	.word	0
 
 sub_selectsong:

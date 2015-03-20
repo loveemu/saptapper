@@ -105,6 +105,16 @@ bool BytePattern::match(const void *buf, size_t buf_len) const
 	return true;
 }
 
+bool BytePattern::match(const void *buf, size_t buf_len, size_t offset) const
+{
+	if (offset + ptn_len > buf_len)
+	{
+		return false;
+	}
+
+	return match((const char *)buf + offset, buf_len - offset);
+}
+
 bool BytePattern::search(const void *buf, size_t buf_len, size_t& match_offset, size_t search_offset) const
 {
 	if (buf == NULL)

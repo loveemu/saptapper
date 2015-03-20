@@ -596,6 +596,12 @@ VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_
 		}
 	}
 
+	if (driver_params.count("ptr_main") != 0) {
+		if (driver_params.count("main") == 0) {
+			driver_params["main"] = VgmDriverParam(mget4l(&rom[gba_address_to_offset(driver_params["ptr_main"].getInteger())]) & ~1, true);
+		}
+	}
+
 	// determine the driver
 	if (manual_gsf_driver == NULL)
 	{

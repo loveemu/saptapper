@@ -30,6 +30,7 @@ public:
 	~BytePattern();
 
 	bool match(const void *buf, size_t buf_len) const;
+	bool match(const void *buf, size_t buf_len, size_t offset) const;
 	bool search(const void *buf, size_t buf_len, size_t& match_offset, size_t search_offset = 0) const;
 	inline size_t length() const { return ptn_len; }
 };

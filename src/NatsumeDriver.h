@@ -53,10 +53,6 @@ public:
 		return m_message;
 	}
 
-	static uint32_t find_selectsong(const uint8_t * rom, uint32_t rom_size);
-	static uint32_t find_init(const uint8_t * rom, uint32_t rom_size);
-	static uint32_t find_init_2(const uint8_t * rom, uint32_t rom_size, uint32_t & a0);
-
 protected:
 	std::string m_name;
 	std::string m_version;
