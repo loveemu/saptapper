@@ -22,11 +22,11 @@ loc_read_watermark:
 	bne	loc_read_watermark      @ repeat until NUL
 	b	init
 
-.align 2
+.align
 a_GsfDriverMark:
 	.asciz	"Sappy Driver Ripper by CaitSith2\\Zoopd, (c) 2004, 2014 loveemu"
 
-.align 2
+.align
 init:
 	push	{lr}
 	ldr	r3, sappy_soundinit
@@ -123,4 +123,5 @@ bx_r3:
 locret_1:
 	bx	lr
 
+.align
 	.ascii	"___DRIVER_END___"
