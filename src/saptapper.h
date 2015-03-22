@@ -86,6 +86,28 @@ static inline uint32_t get_thumb_branch_with_link_destination(uint32_t current_a
 	return current_address + 4 + offset;
 }
 
+static inline void fill_with_nop_arm(uint8_t * rom, size_t size)
+{
+	size &= ~3; // 4 bytes alignment
+
+	for (size_t offset = 0; offset < size; offset += 4) {
+		rom[offset] = 0x00;
+		rom[offset + 1] = 0x00;
+		rom[offset + 2] = 0xa0;
+		rom[offset + 3] = 0xe1;
+	}
+}
+
+static inline void fill_with_nop_thumb(uint8_t * rom, size_t size)
+{
+	size &= ~1; // 2 bytes alignment
+
+	for (size_t offset = 0; offset < size; offset += 2) {
+		rom[offset] = 0xc0;
+		rom[offset + 1] = 0x46;
+	}
+}
+
 class Saptapper
 {
 private:
