@@ -15,7 +15,7 @@
 
 #include "asm/natsume-gsf.h"
 
-#define DRIVER_PARAM_BASE	0x1C
+#define DRIVER_PARAM_BASE	0x44
 
 NatsumeDriver::NatsumeDriver() :
 	m_name("Natsume"),

@@ -7,6 +7,9 @@
 .thumb
 .align 2
 main:
+	adr	r0, a_GsfDriverMark
+	bl	read_watermark
+
 	ldr	r3, sub_init_irq
 	bl	bx_r3
 
@@ -22,7 +25,11 @@ infinite_loop:
 	swi	5                       @ VSyncIntrWait
 	b	infinite_loop
 
-.align 2
+.align
+a_GsfDriverMark:
+	.asciz	"Natsume Driver Ripper by loveemu"
+
+.align
 sub_init_irq:
 	.word	0
 
@@ -45,4 +52,13 @@ bx_r3:
 locret_1:
 	bx	lr
 
+read_watermark:
+loc_read_watermark:
+	ldr	r1, [r0]
+	add	r0, r0, #4
+	lsr	r2, r1, #24
+	bne	loc_read_watermark      @ repeat until NUL
+	bx	lr
+
+.align
 	.ascii	"___DRIVER_END___"
