@@ -412,26 +412,29 @@ void Saptapper::close_rom(void)
 	rom_size = 0;
 }
 
-void Saptapper::make_backup_for_driver(uint32_t offset, size_t size, bool use_main)
+void Saptapper::create_rom_backup(const uint8_t * rom, size_t rom_size)
 {
 	uninstall_driver();
 
-	// allocate memory for backup
-	rom_patch_backup = new uint8_t[size];
+	rom_backup = new uint8_t[rom_size];
+	rom_backup_size = rom_size;
 
-	// determine entrypoint
-	if (use_main) {
-		rom_patch_entrypoint_offset = rom_main_ptr_offset;
-	}
-	else {
-		rom_patch_entrypoint_offset = 0;
-	}
+	memcpy(rom_backup, rom, rom_backup_size);
+}
 
-	// make a backup of unpatched ROM
-	rom_patch_entrypoint_backup = mget4l(&rom[rom_patch_entrypoint_offset]);
-	memcpy(rom_patch_backup, &rom[offset], size);
-	rom_patch_offset = offset;
-	rom_patch_size = size;
+void Saptapper::restore_rom_from_backup(uint8_t * rom, size_t rom_size)
+{
+	memcpy(rom, rom_backup, rom_backup_size);
+	rom_size = rom_backup_size;
+}
+
+void Saptapper::destroy_rom_backup(uint8_t * & rom_backup, size_t & rom_backup_size)
+{
+	if (rom_backup != NULL) {
+		delete[] rom_backup;
+		rom_backup = NULL;
+		rom_backup_size = 0;
+	}
 }
 
 bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, size_t size, bool thumb, bool use_main)
@@ -461,7 +464,7 @@ bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, siz
 	}
 
 	// make a backup of unpatched ROM
-	make_backup_for_driver(offset, size, use_main);
+	create_rom_backup(rom, rom_size);
 
 	// patch ROM
 	if (use_main)
@@ -481,16 +484,12 @@ bool Saptapper::install_driver(const uint8_t* driver_block, uint32_t offset, siz
 
 void Saptapper::uninstall_driver(void)
 {
-	if (rom_patch_backup != NULL)
-	{
-		memcpy(&rom[rom_patch_offset], rom_patch_backup, rom_patch_size);
-		mput4l(rom_patch_entrypoint_backup, &rom[rom_patch_entrypoint_offset]);
-
-		delete [] rom_patch_backup;
-		rom_patch_backup = NULL;
+	if (rom_backup == NULL) {
+		return;
 	}
-	rom_patch_offset = GSF_INVALID_OFFSET;
-	rom_patch_size = 0;
+
+	restore_rom_from_backup(rom, rom_size);
+	destroy_rom_backup(rom_backup, rom_backup_size);
 }
 
 void Saptapper::print_driver_params(const std::map<std::string, VgmDriverParam>& driver_params) const
@@ -693,8 +692,7 @@ VgmDriver * Saptapper::make_gsflib(const std::string& gsf_path, bool prefer_gba_
 	// install driver temporarily
 	if (manual_gsf_driver == NULL)
 	{
-		bool use_main = driver->GetIfDriverUseMain();
-		make_backup_for_driver(offset_gsf_driver, gsf_driver_size, use_main);
+		create_rom_backup(rom, rom_size);
 
 		if (!driver->InstallDriver(rom, rom_size, offset_gsf_driver, driver_params))
 		{

@@ -38,9 +38,6 @@ public:
 	// Return relocatable driver block size.
 	virtual size_t GetDriverSize(const std::map<std::string, VgmDriverParam>& params) const = 0;
 
-	// Indicate driver block location. (true: main, false: start)
-	virtual bool GetIfDriverUseMain(void) const = 0;
-
 	// Install driver block into specified offset.
 	virtual bool InstallDriver(uint8_t * rom, size_t rom_size, off_t offset, const std::map<std::string, VgmDriverParam>& params) = 0;
 

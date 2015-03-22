@@ -287,11 +287,6 @@ size_t Mp2kDriver::GetDriverSize(const std::map<std::string, VgmDriverParam>& pa
 	return sizeof(driver_block);
 }
 
-bool Mp2kDriver::GetIfDriverUseMain(void) const
-{
-	return false;
-}
-
 // Install driver block into specified offset.
 bool Mp2kDriver::InstallDriver(uint8_t * rom, size_t rom_size, off_t offset, const std::map<std::string, VgmDriverParam>& params)
 {

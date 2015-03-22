@@ -250,11 +250,6 @@ size_t NatsumeDriver::GetDriverSize(const std::map<std::string, VgmDriverParam>&
 	return sizeof(driver_block);
 }
 
-bool NatsumeDriver::GetIfDriverUseMain(void) const
-{
-	return true;
-}
-
 // Install driver block into specified offset.
 bool NatsumeDriver::InstallDriver(uint8_t * rom, size_t rom_size, off_t offset, const std::map<std::string, VgmDriverParam>& params)
 {

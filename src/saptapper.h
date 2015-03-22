@@ -96,12 +96,8 @@ private:
 
 	std::vector<VgmDriver*> drivers;
 
-	// create backup of driver location
-	uint32_t rom_patch_entrypoint_offset;
-	uint32_t rom_patch_entrypoint_backup;
-	uint8_t* rom_patch_backup;
-	uint32_t rom_patch_offset;
-	size_t rom_patch_size;
+	uint8_t* rom_backup;
+	size_t rom_backup_size;
 
 	uint8_t* manual_gsf_driver;
 	uint32_t manual_gsf_driver_offset;
@@ -122,11 +118,8 @@ public:
 		rom_exe(NULL),
 		rom_size(0),
 		rom_main_ptr_offset(GSF_INVALID_OFFSET),
-		rom_patch_entrypoint_offset(0),
-		rom_patch_entrypoint_backup(0),
-		rom_patch_backup(NULL),
-		rom_patch_offset(GSF_INVALID_OFFSET),
-		rom_patch_size(0),
+		rom_backup(NULL),
+		rom_backup_size(0),
 		manual_gsf_driver(NULL),
 		manual_gsf_driver_offset(GSF_INVALID_OFFSET),
 		manual_gsf_driver_size(0),
@@ -210,7 +203,9 @@ public:
 	}
 
 private:
-	void make_backup_for_driver(uint32_t offset, size_t size, bool use_main);
+	void create_rom_backup(const uint8_t * rom, size_t rom_size);
+	void restore_rom_from_backup(uint8_t * rom, size_t rom_size);
+	void destroy_rom_backup(uint8_t * & rom_backup, size_t & rom_backup_size);
 	bool install_driver(const uint8_t* driver_block, uint32_t offset, size_t size, bool thumb, bool use_main);
 	void uninstall_driver(void);
 
