@@ -1336,6 +1336,11 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 			uint32_t minigsf_size = ul;
+			if (minigsf_size > 4)
+			{
+				fprintf(stderr, "Error: Too large minigsf size\n");
+				return EXIT_FAILURE;
+			}
 
 			ul = strtoul(argv[argi + 4], &strtol_endp, 0);
 			if (strtol_endp != NULL && *strtol_endp != '\0')
@@ -1344,7 +1349,7 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 			uint32_t minigsf_count = ul;
-			if (minigsf_count > (1 << (minigsf_size * 8)))
+			if (minigsf_size == 0 || minigsf_count > (size_t)(1 << (minigsf_size * 8)))
 			{
 				fprintf(stderr, "Error: Too short minigsf size\n");
 				return EXIT_FAILURE;
