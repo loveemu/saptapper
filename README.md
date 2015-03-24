@@ -60,6 +60,9 @@ Syntax: `saptapper (options) [GBA Files]`
 `--find-freespace [ROM.gba] [size]`
   : Find free space and quit
 
+`--minigsf [basename] [offset] [size] [count]`
+  : Create minigsf files
+
 Note
 ----
 

@@ -967,6 +967,7 @@ void printUsage(const char *cmd)
 		"-ov, --offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
 		"--tag-gsfby [name]", "Specify the nickname of GSF ripper",
 		"--find-freespace [ROM.gba] [size]", "Find free space and quit",
+		"--minigsf [basename] [offset] [size] [count]", "Create minigsf files",
 	};
 
 	printf("%s %s\n", APP_NAME, APP_VER);
@@ -1297,8 +1298,77 @@ int main(int argc, char **argv)
 			}
 			printf("0x%08X\n", gba_offset_to_address(offset));
 
-			argi++;
 			return EXIT_SUCCESS;
+		}
+		else if (strcmp(argv[argi], "--minigsf") == 0)
+		{
+			if (argi + 5 != argc)
+			{
+				fprintf(stderr, "Error: Too few/more arguments for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+
+			std::string minigsf_basename(argv[argi + 1]);
+
+			ul = strtoul(argv[argi + 2], &strtol_endp, 0);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			uint32_t minigsf_offset = ul;
+			if ((minigsf_offset & 0xFE000000) == 0)
+			{
+				fprintf(stderr, "Error: Not a GBA ROM address 0x%08X\n", minigsf_offset);
+				return EXIT_FAILURE;
+			}
+
+			ul = strtoul(argv[argi + 3], &strtol_endp, 0);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			uint32_t minigsf_size = ul;
+
+			ul = strtoul(argv[argi + 4], &strtol_endp, 0);
+			if (strtol_endp != NULL && *strtol_endp != '\0')
+			{
+				fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+			uint32_t minigsf_count = ul;
+			if (minigsf_count > (1 << (minigsf_size * 8)))
+			{
+				fprintf(stderr, "Error: Too short minigsf size\n");
+				return EXIT_FAILURE;
+			}
+
+			// determine gsflib filename
+			char gsflib_filename[PATH_MAX];
+			sprintf(gsflib_filename, "%s.gsflib", minigsf_basename.c_str());
+
+			// create gsf tag
+			std::map<std::string, std::string> tags;
+			tags["_lib"] = gsflib_filename;
+
+			// create minigsf files
+			bool succeeded = true;
+			for (uint32_t minigsf_num = 0; minigsf_num < minigsf_count; minigsf_num++)
+			{
+				// determine minigsf filename
+				char minigsf_filename[PATH_MAX];
+				sprintf(minigsf_filename, "%s-%04d.minigsf", minigsf_basename.c_str(), minigsf_num);
+
+				// save minigsf
+				if (!Saptapper::make_minigsf(minigsf_filename, minigsf_offset, minigsf_size, minigsf_num, tags))
+				{
+					fprintf(stderr, "Error: Unable to save \"%s\"\n", minigsf_filename);
+					succeeded = false;
+				}
+			}
+
+			return succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
 		}
 		else if (strcmp(argv[argi], "--largespace") == 0)
 		{
