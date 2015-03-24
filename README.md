@@ -13,52 +13,51 @@ Downloads
 ---------
 
 - [Latest release](https://github.com/loveemu/saptapper/releases/latest)
-- [saptapper-20140117.7z](https://github.com/loveemu/saptapper/releases/download/v1.0-20140119/saptapper-20140117.7z) (all ripping routines are identical to unaltered version)
 
 Usage
 -----
 
-Syntax: saptapper [GBA Files]
+Syntax: `saptapper (options) [GBA Files]`
 
-### Options ###
+### Options
 
---help
+`--help`
   : Show help
 
--q, --quiet
+`-q, --quiet`
   : Do not output ripping info to STDOUT
 
--r
+`-r`
   : Output uncompressed GBA ROM
 
--n [count]
+`-n [count]`
   : Set minigsf count
 
--fd, --gsf-driver-file [driver.bin] [0xXXXX] [arm|thumb] [start|main]
+`-fd, --gsf-driver-file [driver.bin] [0xXXXX] [arm|thumb] [start|main]`
   : Specify relocatable GSF driver block and minigsf offset
 
--od, --offset-gsf-driver [0xXXXXXXXX]
+`-od, --offset-gsf-driver [0xXXXXXXXX]`
   : Specify the offset of GSF driver block
 
--os, --offset-selectsong [0xXXXXXXXX]
+`-os, --offset-selectsong [0xXXXXXXXX]`
   : Specify the offset of sappy_selectsong function
 
--ot, --offset-songtable [0xXXXXXXXX]
+`-ot, --offset-songtable [0xXXXXXXXX]`
   : Specify the offset of song table (well known Sappy offset)
 
--om, --offset-main [0xXXXXXXXX]
+`-om, --offset-main [0xXXXXXXXX]`
   : Specify the offset of sappy_main function
 
--oi, --offset-init [0xXXXXXXXX]
+`-oi, --offset-init [0xXXXXXXXX]`
   : Specify the offset of sappy_init function
 
--ov, --offset-vsync [0xXXXXXXXX]
+`-ov, --offset-vsync [0xXXXXXXXX]`
   : Specify the offset of sappy_vsync function
 
---tag-gsfby [name]
+`--tag-gsfby [name]`
   : Specify the nickname of GSF ripper
 
---find-freespace [ROM.gba] [size]
+`--find-freespace [ROM.gba] [size]`
   : Find free space and quit
 
 Note

@@ -977,14 +977,14 @@ void printUsage(const char *cmd)
 	printf("Usage\n");
 	printf("-----\n");
 	printf("\n");
-	printf("Syntax: %s <GBA Files>\n", cmd);
+	printf("Syntax: `%s <GBA Files>`\n", cmd);
 	printf("\n");
 	printf("### Options ###\n");
 	printf("\n");
 
 	for (int i = 0; i < sizeof(availableOptions) / sizeof(availableOptions[0]); i += 2)
 	{
-		printf("%s\n", availableOptions[i]);
+		printf("`%s`\n", availableOptions[i]);
 		printf("  : %s\n", availableOptions[i + 1]);
 		printf("\n");
 	}
