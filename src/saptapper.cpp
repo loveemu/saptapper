@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2015-03-19]"
+#define APP_VER		"[2015-03-25]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -967,6 +967,7 @@ void printUsage(const char *cmd)
 		"-ov, --offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
 		"--tag-gsfby [name]", "Specify the nickname of GSF ripper",
 		"--find-freespace [ROM.gba] [size]", "Find free space and quit",
+		"--rom2gsf [GBA ROM file] [-m]", "Convert GBA ROM into GSF (-m for multiboot ROM)",
 		"--minigsf [basename] [offset] [size] [count]", "Create minigsf files",
 	};
 
@@ -1300,6 +1301,11 @@ int main(int argc, char **argv)
 
 			return EXIT_SUCCESS;
 		}
+		else if (strcmp(argv[argi], "--largespace") == 0)
+		{
+			// experimental: it's secret to everybody :)
+			app.set_prefer_larger_free_space(true);
+		}
 		else if (strcmp(argv[argi], "--minigsf") == 0)
 		{
 			if (argi + 5 != argc)
@@ -1370,10 +1376,98 @@ int main(int argc, char **argv)
 
 			return succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
 		}
-		else if (strcmp(argv[argi], "--largespace") == 0)
+		else if (strcmp(argv[argi], "--rom2gsf") == 0)
 		{
-			// experimental: it's secret to everybody :)
-			app.set_prefer_larger_free_space(true);
+			if (argi + 1 >= argc)
+			{
+				fprintf(stderr, "Error: No input files for \"%s\"\n", argv[argi]);
+				return EXIT_FAILURE;
+			}
+
+			bool succeeded = true;
+			for (argi = argi + 1; argi < argc; argi++)
+			{
+				const char * rom_filename = argv[argi];
+
+				bool multiboot;
+				if (argi + 1 < argc && strcmp(argv[argi + 1], "-m") == 0)
+				{
+					multiboot = true;
+					argi++;
+				}
+				else
+				{
+					multiboot = false;
+				}
+
+				// determine gsf filename
+				char gsf_filename[PATH_MAX];
+				strcpy(gsf_filename, rom_filename);
+				path_stripext(gsf_filename);
+				strcat(gsf_filename, ".gsf");
+
+				// get file size
+				off_t rom_size_off = path_getfilesize(rom_filename);
+				if (rom_size_off < 0)
+				{
+					fprintf(stderr, "Error: File not found \"%s\"\n", rom_filename);
+					succeeded = false;
+					continue;
+				}
+				size_t rom_size = (size_t)rom_size_off;
+
+				// allocate memory for gba rom
+				size_t exe_size = GSF_EXE_HEADER_SIZE + rom_size;
+				uint8_t * exe = new uint8_t[exe_size];
+				if (exe == NULL)
+				{
+					fprintf(stderr, "Error: Memory allocation error\n");
+					succeeded = false;
+					break;
+				}
+
+				// put gsf header
+				uint32_t gsf_entrypoint = multiboot ? 0x02000000 : 0x08000000;
+				Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, gsf_entrypoint, (uint32_t)rom_size);
+
+				// open gba rom
+				FILE * fp = fopen(rom_filename, "rb");
+				if (fp == NULL)
+				{
+					fprintf(stderr, "Error: File open error \"%s\"\n", rom_filename);
+					succeeded = false;
+
+					delete[] exe;
+					continue;
+				}
+
+				// read gba rom
+				if (fread(&exe[GSF_EXE_HEADER_SIZE], 1, rom_size, fp) != rom_size)
+				{
+					fprintf(stderr, "Error: File read error \"%s\"\n", rom_filename);
+					succeeded = false;
+
+					fclose(fp);
+					delete[] exe;
+					continue;
+				}
+
+				fclose(fp);
+
+				// output gsf file
+				if (!Saptapper::exe2gsf(gsf_filename, exe, exe_size))
+				{
+					fprintf(stderr, "Error: Unable to save \"%s\"\n", gsf_filename);
+					succeeded = false;
+
+					delete[] exe;
+					continue;
+				}
+
+				delete[] exe;
+			}
+
+			return succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
 		}
 		else
 		{
