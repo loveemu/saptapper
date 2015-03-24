@@ -871,7 +871,7 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, s
 		do
 		{
 			minigsfsize++;
-		} while(((minigsfcount - 1) >> (minigsfsize * 8)) != 0);
+		} while (minigsfsize < 4 && ((minigsfcount - 1) >> (minigsfsize * 8)) != 0);
 	}
 
 	// set minigsf tags
@@ -1349,7 +1349,7 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 			uint32_t minigsf_count = ul;
-			if (minigsf_size == 0 || minigsf_count > (size_t)(1 << (minigsf_size * 8)))
+			if (minigsf_size == 0 || (minigsf_size < 4 && ((minigsf_count - 1) >> (minigsf_size * 8)) != 0))
 			{
 				fprintf(stderr, "Error: Too short minigsf size\n");
 				return EXIT_FAILURE;
