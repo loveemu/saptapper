@@ -111,7 +111,8 @@ static INLINE void path_basename(char *path)
 #ifdef _WIN32
 	PathStripPathA(path);
 #else
-	basename(path);
+	char * new_path = basename(path);
+	memmove(path, new_path, strlen(new_path) + 1);
 #endif
 }
 
