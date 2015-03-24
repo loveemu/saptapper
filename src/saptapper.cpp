@@ -866,10 +866,13 @@ bool Saptapper::make_gsf_set(const std::string& rom_path, bool prefer_gba_rom, s
 
 	// determine minigsf size
 	size_t minigsfsize = 0;
-	do
+	if (minigsfcount != 0)
 	{
-		minigsfsize++;
-	} while((minigsfcount >> (minigsfsize * 8)) != 0);
+		do
+		{
+			minigsfsize++;
+		} while(((minigsfcount - 1) >> (minigsfsize * 8)) != 0);
+	}
 
 	// set minigsf tags
 	tags["_lib"] = gsflib_name;
