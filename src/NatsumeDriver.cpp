@@ -222,7 +222,7 @@ bool NatsumeDriver::ValidateDriverParams(const uint8_t * rom, size_t rom_size, c
 		return false;
 	}
 	uint32_t ofs_sound_work = params.at("ofs_sound_work").getInteger();
-	if (params.at("ofs_sound_work").type() != VgmDriverParamType::INTEGER)
+	if (params.at("ofs_sound_work").type() != INTEGER)
 	{
 		sprintf(str, "ofs_sound_work must be an integer");
 		m_message = str;
