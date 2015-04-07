@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2015-03-25]"
+#define APP_VER		"[2015-04-07]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -184,10 +184,11 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 
 bool Saptapper::make_minigsf(const std::string& gsf_path, uint32_t address, size_t size, uint32_t num, std::map<std::string, std::string>& tags)
 {
-	uint8_t exe[GSF_EXE_HEADER_SIZE + 4];
+	uint8_t exe[GSF_EXE_HEADER_SIZE + 256];
+	memset(exe, 0, GSF_EXE_HEADER_SIZE + 256);
 
 	// limit size
-	if (size > 4)
+	if (size > 256)
 	{
 		return false;
 	}
