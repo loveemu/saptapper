@@ -61,7 +61,7 @@ static INLINE const char *path_findbase(const char *path)
 #ifdef _WIN32
 	return PathFindFileNameA(path);
 #else
-	char *pslash;
+	const char *pslash;
 
 	if (path == NULL)
 	{
@@ -85,8 +85,8 @@ static INLINE const char *path_findext(const char *path)
 #ifdef _WIN32
 	return PathFindExtensionA(path);
 #else
-	char *pdot;
-	char *pslash;
+	const char *pdot;
+	const char *pslash;
 
 	if (path == NULL)
 	{
@@ -201,6 +201,15 @@ static char *path_getabspath(const char *path, char *absolute_path)
 		strcat(&absolute_path[len], path);
 	}
 	return absolute_path;
+#endif
+}
+
+static void path_modulepath(char * path)
+{
+#ifdef _WIN32
+	GetModuleFileNameA(GetModuleHandleA(NULL), path, PATH_MAX);
+#else
+	readlink("/proc/self/exe", path, PATH_MAX);  
 #endif
 }
 

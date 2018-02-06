@@ -1107,7 +1107,7 @@ int main(int argc, char **argv)
 					return EXIT_FAILURE;
 				}
 				// GBA ROM offset to address
-				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				if (ul <= 0x1FFFFFF)
 				{
 					ul |= 0x8000000;
 				}
@@ -1135,7 +1135,7 @@ int main(int argc, char **argv)
 					return EXIT_FAILURE;
 				}
 				// GBA ROM offset to address
-				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				if (ul <= 0x1FFFFFF)
 				{
 					ul |= 0x8000000;
 				}
@@ -1163,7 +1163,7 @@ int main(int argc, char **argv)
 					return EXIT_FAILURE;
 				}
 				// GBA ROM offset to address
-				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				if (ul <= 0x1FFFFFF)
 				{
 					ul |= 0x8000000;
 				}
@@ -1191,7 +1191,7 @@ int main(int argc, char **argv)
 					return EXIT_FAILURE;
 				}
 				// GBA ROM offset to address
-				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				if (ul <= 0x1FFFFFF)
 				{
 					ul |= 0x8000000;
 				}
@@ -1219,7 +1219,7 @@ int main(int argc, char **argv)
 					return EXIT_FAILURE;
 				}
 				// GBA ROM offset to address
-				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				if (ul <= 0x1FFFFFF)
 				{
 					ul |= 0x8000000;
 				}
@@ -1247,7 +1247,7 @@ int main(int argc, char **argv)
 					return EXIT_FAILURE;
 				}
 				// GBA ROM offset to address
-				if (ul >= 0x0000000 && ul <= 0x1FFFFFF)
+				if (ul <= 0x1FFFFFF)
 				{
 					ul |= 0x8000000;
 				}
