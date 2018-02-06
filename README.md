@@ -1,5 +1,6 @@
 Saptapper
 =========
+[![Travis Build Status](https://travis-ci.org/loveemu/saptapper.svg?branch=master)](https://travis-ci.org/loveemu/saptapper) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/8gdychs5ftgijyui/branch/master?svg=true)](https://ci.appveyor.com/project/loveemu/saptapper/branch/master)
 
 Automated GSF ripper tool created by Caitsith2, revised by loveemu.
 <https://github.com/loveemu/saptapper>
