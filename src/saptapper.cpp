@@ -12,10 +12,6 @@
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
-#ifdef _WIN32
-#define ZLIB_WINAPI
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
