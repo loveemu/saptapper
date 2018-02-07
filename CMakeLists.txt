@@ -53,7 +53,18 @@ set(SRCS
     src/VgmDriverParam.cpp
 )
 
-add_executable(saptapper ${SRCS})
+set(HDRS
+    src/BytePattern.h
+    src/cbyteio.h
+    src/cpath.h
+    src/Mp2kDriver.h
+    src/NatsumeDriver.h
+    src/saptapper.h
+    src/VgmDriver.h
+    src/VgmDriverParam.h
+)
+
+add_executable(saptapper ${SRCS} ${HDRS})
 
 if(ZLIB_FOUND)
     include_directories(${ZLIB_INCLUDE_DIRS})
