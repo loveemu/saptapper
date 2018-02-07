@@ -4,8 +4,6 @@ project(saptapper C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(VERSION "1.2.0")
-
 if(MSVC)
     if(CMAKE_CL_64)
         set(MSVC_ARCHITECTURE_NAME x64)
