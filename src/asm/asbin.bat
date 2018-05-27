@@ -1,16 +1,17 @@
+@echo off
+@setlocal
 @rem devkitadv required
 
-@if "%1"=="" @goto noargs
+@if "%1"=="" (
+	echo No input files>&2
+	exit /b 1
+)
 
-@gcc -o "%~n1.tmp.bin" "%1"
-@if errorlevel 1 @goto abort
-@objcopy -O binary "%~n1.tmp.bin"
-@if errorlevel 1 @goto abort
+set PREFIX=arm-none-eabi-
 
-@exit /b 0
+%PREFIX%gcc -c -o "%~n1.o" "%1"
+if errorlevel 1 exit /b
+%PREFIX%objcopy -O binary "%~n1.o" "%~n1.bin"
+if errorlevel 1 exit /b
 
-:noargs
-@echo No input files>&2
-@exit /b 1
-
-:abort
+exit /b 0
