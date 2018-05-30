@@ -1384,8 +1384,8 @@ int main(int argc, char **argv)
 			argi++;
 
 			bool multiboot = false;
-			uint32_t gsf_entrypoint = 0;
-			bool default_gsf_entrypoint = true;
+			uint32_t load_offset = 0;
+			bool default_load_offset = true;
 			std::string gsf_filename;
 			std::string gsflib_filename;
 			std::string psfby;
@@ -1423,8 +1423,8 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 
-					gsf_entrypoint = ul;
-					default_gsf_entrypoint = false;
+					load_offset = ul;
+					default_load_offset = false;
 					argi++;
 				}
 				else if (strcmp(argv[argi], "--psfby") == 0) {
@@ -1443,8 +1443,9 @@ int main(int argc, char **argv)
 				argi++;
 			}
 
-			if (default_gsf_entrypoint) {
-				gsf_entrypoint = multiboot ? 0x02000000 : 0x08000000;
+			uint32_t gsf_entrypoint = multiboot ? 0x02000000 : 0x08000000;
+			if (default_load_offset) {
+				load_offset = gsf_entrypoint;
 			}
 
 			if (argi == argc) {
@@ -1490,7 +1491,7 @@ int main(int argc, char **argv)
 			}
 
 			// put gsf header
-			Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, gsf_entrypoint, (uint32_t)rom_size);
+			Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, load_offset, (uint32_t)rom_size);
 
 			// open gba rom
 			FILE * fp = fopen(rom_filename, "rb");
