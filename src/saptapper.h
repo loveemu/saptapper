@@ -169,7 +169,7 @@ public:
 
 	static void put_gsf_exe_header(uint8_t *exe, uint32_t entrypoint, uint32_t load_offset, uint32_t rom_size);
 	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size);
-	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size, std::map<std::string, std::string>& tags);
+	static bool exe2gsf(const std::string& gsf_path, uint8_t *rom, size_t rom_size, const std::map<std::string, std::string>& tags);
 	static bool make_minigsf(const std::string& gsf_path, uint32_t address, size_t size, uint32_t num, std::map<std::string, std::string>& tags);
 
 	inline void set_gsf_driver_offset(uint32_t offset)

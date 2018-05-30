@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2015-04-07]"
+#define APP_VER		"[2018-05-30]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -56,7 +56,7 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 }
 
 #define CHUNK 16384
-bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_size, std::map<std::string, std::string>& tags)
+bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_size, const std::map<std::string, std::string>& tags)
 {
 	FILE *gsf_file = NULL;
 
@@ -155,7 +155,7 @@ bool Saptapper::exe2gsf(const std::string& gsf_path, uint8_t *exe, size_t exe_si
 	{
 		fwrite(PSF_TAG_SIGNATURE, strlen(PSF_TAG_SIGNATURE), 1, gsf_file);
 
-		for (std::map<std::string, std::string>::iterator it = tags.begin(); it != tags.end(); ++it)
+		for (auto it = tags.begin(); it != tags.end(); ++it)
 		{
 			const std::string& key = it->first;
 			const std::string& value = it->second;
@@ -964,7 +964,7 @@ void printUsage(const char *cmd)
 		"-ov, --offset-vsync [0xXXXXXXXX]", "Specify the offset of sappy_vsync function",
 		"--tag-gsfby [name]", "Specify the nickname of GSF ripper",
 		"--find-freespace [ROM.gba] [size]", "Find free space and quit",
-		"--rom2gsf [GBA ROM file] [-m]", "Convert GBA ROM into GSF (-m for multiboot ROM)",
+		"--rom2gsf (-m | -o [filename] | --lib [filename] | --load [offset] | --psfby [name]) [GBA ROM file]", "Convert GBA ROM into GSF (-m for multiboot ROM)",
 		"--minigsf [basename] [offset] [size] [count]", "Create minigsf files",
 	};
 
@@ -1380,94 +1380,160 @@ int main(int argc, char **argv)
 		}
 		else if (strcmp(argv[argi], "--rom2gsf") == 0)
 		{
-			if (argi + 1 >= argc)
-			{
+			const char* mode = argv[argi];
+			argi++;
+
+			bool multiboot = false;
+			uint32_t gsf_entrypoint = 0;
+			bool default_gsf_entrypoint = true;
+			std::string gsf_filename;
+			std::string gsflib_filename;
+			std::string psfby;
+			while (argi < argc && argv[argi][0] == '-') {
+				if (strcmp(argv[argi], "-m") == 0) {
+					multiboot = true;
+				}
+				else if (strcmp(argv[argi], "-o") == 0) {
+					if (argi + 1 >= argc) {
+						fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+						return EXIT_FAILURE;
+					}
+
+					gsf_filename = argv[argi + 1];
+					argi++;
+				}
+				else if (strcmp(argv[argi], "--lib") == 0) {
+					if (argi + 1 >= argc) {
+						fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+						return EXIT_FAILURE;
+					}
+
+					gsflib_filename = argv[argi + 1];
+					argi++;
+				}
+				else if (strcmp(argv[argi], "--load") == 0) {
+					if (argi + 1 >= argc) {
+						fprintf(stderr, "Error: No input address for \"%s\"\n", argv[argi]);
+						return EXIT_FAILURE;
+					}
+
+					ul = strtoul(argv[argi + 1], &strtol_endp, 0);
+					if (strtol_endp != NULL && *strtol_endp != '\0') {
+						fprintf(stderr, "Error: Number format error \"%s\"\n", argv[argi]);
+						return EXIT_FAILURE;
+					}
+
+					gsf_entrypoint = ul;
+					default_gsf_entrypoint = false;
+					argi++;
+				}
+				else if (strcmp(argv[argi], "--psfby") == 0) {
+					if (argi + 1 >= argc) {
+						fprintf(stderr, "Error: Too few arguments for \"%s\"\n", argv[argi]);
+						return EXIT_FAILURE;
+					}
+
+					psfby = argv[argi + 1];
+					argi++;
+				}
+				else {
+					fprintf(stderr, "Error: Unknown option \"%s\" for \"%s\"\n", argv[argi], mode);
+					return EXIT_FAILURE;
+				}
+				argi++;
+			}
+
+			if (default_gsf_entrypoint) {
+				gsf_entrypoint = multiboot ? 0x02000000 : 0x08000000;
+			}
+
+			if (argi == argc) {
 				fprintf(stderr, "Error: No input files for \"%s\"\n", argv[argi]);
 				return EXIT_FAILURE;
 			}
 
 			bool succeeded = true;
-			for (argi = argi + 1; argi < argc; argi++)
+			const char * rom_filename = argv[argi];
+
+			// determine gsf filename
+			if (gsf_filename.empty()) {
+				char gsf_filename_c[PATH_MAX];
+				strcpy(gsf_filename_c, rom_filename);
+				path_stripext(gsf_filename_c);
+				if (gsflib_filename.empty()) {
+					strcat(gsf_filename_c, ".gsf");
+				}
+				else {
+					strcat(gsf_filename_c, ".minigsf");
+				}
+				gsf_filename = gsf_filename_c;
+			}
+
+			// get file size
+			off_t rom_size_off = path_getfilesize(rom_filename);
+			if (rom_size_off < 0)
 			{
-				const char * rom_filename = argv[argi];
+				fprintf(stderr, "Error: File not found \"%s\"\n", rom_filename);
+				succeeded = false;
+				continue;
+			}
+			size_t rom_size = (size_t)rom_size_off;
 
-				bool multiboot;
-				if (argi + 1 < argc && strcmp(argv[argi + 1], "-m") == 0)
-				{
-					multiboot = true;
-					argi++;
-				}
-				else
-				{
-					multiboot = false;
-				}
+			// allocate memory for gba rom
+			size_t exe_size = GSF_EXE_HEADER_SIZE + rom_size;
+			uint8_t * exe = new uint8_t[exe_size];
+			if (exe == NULL)
+			{
+				fprintf(stderr, "Error: Memory allocation error\n");
+				succeeded = false;
+				break;
+			}
 
-				// determine gsf filename
-				char gsf_filename[PATH_MAX];
-				strcpy(gsf_filename, rom_filename);
-				path_stripext(gsf_filename);
-				strcat(gsf_filename, ".gsf");
+			// put gsf header
+			Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, gsf_entrypoint, (uint32_t)rom_size);
 
-				// get file size
-				off_t rom_size_off = path_getfilesize(rom_filename);
-				if (rom_size_off < 0)
-				{
-					fprintf(stderr, "Error: File not found \"%s\"\n", rom_filename);
-					succeeded = false;
-					continue;
-				}
-				size_t rom_size = (size_t)rom_size_off;
-
-				// allocate memory for gba rom
-				size_t exe_size = GSF_EXE_HEADER_SIZE + rom_size;
-				uint8_t * exe = new uint8_t[exe_size];
-				if (exe == NULL)
-				{
-					fprintf(stderr, "Error: Memory allocation error\n");
-					succeeded = false;
-					break;
-				}
-
-				// put gsf header
-				uint32_t gsf_entrypoint = multiboot ? 0x02000000 : 0x08000000;
-				Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, gsf_entrypoint, (uint32_t)rom_size);
-
-				// open gba rom
-				FILE * fp = fopen(rom_filename, "rb");
-				if (fp == NULL)
-				{
-					fprintf(stderr, "Error: File open error \"%s\"\n", rom_filename);
-					succeeded = false;
-
-					delete[] exe;
-					continue;
-				}
-
-				// read gba rom
-				if (fread(&exe[GSF_EXE_HEADER_SIZE], 1, rom_size, fp) != rom_size)
-				{
-					fprintf(stderr, "Error: File read error \"%s\"\n", rom_filename);
-					succeeded = false;
-
-					fclose(fp);
-					delete[] exe;
-					continue;
-				}
-
-				fclose(fp);
-
-				// output gsf file
-				if (!Saptapper::exe2gsf(gsf_filename, exe, exe_size))
-				{
-					fprintf(stderr, "Error: Unable to save \"%s\"\n", gsf_filename);
-					succeeded = false;
-
-					delete[] exe;
-					continue;
-				}
+			// open gba rom
+			FILE * fp = fopen(rom_filename, "rb");
+			if (fp == NULL)
+			{
+				fprintf(stderr, "Error: File open error \"%s\"\n", rom_filename);
+				succeeded = false;
 
 				delete[] exe;
+				continue;
 			}
+
+			// read gba rom
+			if (fread(&exe[GSF_EXE_HEADER_SIZE], 1, rom_size, fp) != rom_size)
+			{
+				fprintf(stderr, "Error: File read error \"%s\"\n", rom_filename);
+				succeeded = false;
+
+				fclose(fp);
+				delete[] exe;
+				continue;
+			}
+
+			fclose(fp);
+
+			// output gsf file
+			std::map<std::string, std::string> tags;
+			if (!gsflib_filename.empty()) {
+				tags["_lib"] = gsflib_filename;
+			}
+			if (!psfby.empty()) {
+				tags["psfby"] = psfby;
+			}
+			if (!Saptapper::exe2gsf(gsf_filename.c_str(), exe, exe_size, tags))
+			{
+				fprintf(stderr, "Error: Unable to save \"%s\"\n", gsf_filename.c_str());
+				succeeded = false;
+
+				delete[] exe;
+				continue;
+			}
+
+			delete[] exe;
 
 			return succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
 		}
