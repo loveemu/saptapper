@@ -1523,7 +1523,7 @@ int main(int argc, char **argv)
 				tags["_lib"] = gsflib_filename;
 			}
 			if (!psfby.empty()) {
-				tags["psfby"] = psfby;
+				tags["gsfby"] = psfby;
 			}
 			if (!Saptapper::exe2gsf(gsf_filename.c_str(), exe, exe_size, tags))
 			{
