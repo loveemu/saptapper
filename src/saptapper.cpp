@@ -8,7 +8,7 @@
 */
 
 #define APP_NAME	"Saptapper"
-#define APP_VER		"[2018-05-30]"
+#define APP_VER		"[2018-06-04]"
 #define APP_DESC	"Automated GSF ripper tool"
 #define APP_AUTHOR	"Caitsith2, revised by loveemu <http://github.com/loveemu/saptapper>"
 
@@ -1386,6 +1386,7 @@ int main(int argc, char **argv)
 			bool multiboot = false;
 			uint32_t load_offset = 0;
 			bool default_load_offset = true;
+			std::string out_name;
 			std::string gsf_filename;
 			std::string gsflib_filename;
 			std::string psfby;
@@ -1399,7 +1400,7 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 
-					gsf_filename = argv[argi + 1];
+					out_name = argv[argi + 1];
 					argi++;
 				}
 				else if (strcmp(argv[argi], "--lib") == 0) {
@@ -1453,88 +1454,98 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 
+			if (argi + 1 < argc && out_name != "") {
+				fprintf(stderr, "Warning: Output filename will be ignored for multiple input files.\n");
+				out_name = "";
+			}
+
 			bool succeeded = true;
-			const char * rom_filename = argv[argi];
+			for (; argi < argc; argi++)
+			{
+				const char * rom_filename = argv[argi];
 
-			// determine gsf filename
-			if (gsf_filename.empty()) {
-				char gsf_filename_c[PATH_MAX];
-				strcpy(gsf_filename_c, rom_filename);
-				path_stripext(gsf_filename_c);
-				if (gsflib_filename.empty()) {
-					strcat(gsf_filename_c, ".gsf");
+				// determine gsf filename
+				if (!out_name.empty()) {
+					gsf_filename = out_name;
+				} else {
+					char gsf_filename_c[PATH_MAX];
+					strcpy(gsf_filename_c, rom_filename);
+					path_stripext(gsf_filename_c);
+					if (gsflib_filename.empty()) {
+						strcat(gsf_filename_c, ".gsf");
+					}
+					else {
+						strcat(gsf_filename_c, ".minigsf");
+					}
+					gsf_filename = gsf_filename_c;
 				}
-				else {
-					strcat(gsf_filename_c, ".minigsf");
+
+				// get file size
+				off_t rom_size_off = path_getfilesize(rom_filename);
+				if (rom_size_off < 0)
+				{
+					fprintf(stderr, "Error: File not found \"%s\"\n", rom_filename);
+					succeeded = false;
+					continue;
 				}
-				gsf_filename = gsf_filename_c;
-			}
+				size_t rom_size = (size_t)rom_size_off;
 
-			// get file size
-			off_t rom_size_off = path_getfilesize(rom_filename);
-			if (rom_size_off < 0)
-			{
-				fprintf(stderr, "Error: File not found \"%s\"\n", rom_filename);
-				succeeded = false;
-				continue;
-			}
-			size_t rom_size = (size_t)rom_size_off;
+				// allocate memory for gba rom
+				size_t exe_size = GSF_EXE_HEADER_SIZE + rom_size;
+				uint8_t * exe = new uint8_t[exe_size];
+				if (exe == NULL)
+				{
+					fprintf(stderr, "Error: Memory allocation error\n");
+					succeeded = false;
+					break;
+				}
 
-			// allocate memory for gba rom
-			size_t exe_size = GSF_EXE_HEADER_SIZE + rom_size;
-			uint8_t * exe = new uint8_t[exe_size];
-			if (exe == NULL)
-			{
-				fprintf(stderr, "Error: Memory allocation error\n");
-				succeeded = false;
-				break;
-			}
+				// put gsf header
+				Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, load_offset, (uint32_t)rom_size);
 
-			// put gsf header
-			Saptapper::put_gsf_exe_header(exe, gsf_entrypoint, load_offset, (uint32_t)rom_size);
+				// open gba rom
+				FILE * fp = fopen(rom_filename, "rb");
+				if (fp == NULL)
+				{
+					fprintf(stderr, "Error: File open error \"%s\"\n", rom_filename);
+					succeeded = false;
 
-			// open gba rom
-			FILE * fp = fopen(rom_filename, "rb");
-			if (fp == NULL)
-			{
-				fprintf(stderr, "Error: File open error \"%s\"\n", rom_filename);
-				succeeded = false;
+					delete[] exe;
+					continue;
+				}
 
-				delete[] exe;
-				continue;
-			}
+				// read gba rom
+				if (fread(&exe[GSF_EXE_HEADER_SIZE], 1, rom_size, fp) != rom_size)
+				{
+					fprintf(stderr, "Error: File read error \"%s\"\n", rom_filename);
+					succeeded = false;
 
-			// read gba rom
-			if (fread(&exe[GSF_EXE_HEADER_SIZE], 1, rom_size, fp) != rom_size)
-			{
-				fprintf(stderr, "Error: File read error \"%s\"\n", rom_filename);
-				succeeded = false;
+					fclose(fp);
+					delete[] exe;
+					continue;
+				}
 
 				fclose(fp);
+
+				// output gsf file
+				std::map<std::string, std::string> tags;
+				if (!gsflib_filename.empty()) {
+					tags["_lib"] = gsflib_filename;
+				}
+				if (!psfby.empty()) {
+					tags["gsfby"] = psfby;
+				}
+				if (!Saptapper::exe2gsf(gsf_filename.c_str(), exe, exe_size, tags))
+				{
+					fprintf(stderr, "Error: Unable to save \"%s\"\n", gsf_filename.c_str());
+					succeeded = false;
+
+					delete[] exe;
+					continue;
+				}
+
 				delete[] exe;
-				continue;
 			}
-
-			fclose(fp);
-
-			// output gsf file
-			std::map<std::string, std::string> tags;
-			if (!gsflib_filename.empty()) {
-				tags["_lib"] = gsflib_filename;
-			}
-			if (!psfby.empty()) {
-				tags["gsfby"] = psfby;
-			}
-			if (!Saptapper::exe2gsf(gsf_filename.c_str(), exe, exe_size, tags))
-			{
-				fprintf(stderr, "Error: Unable to save \"%s\"\n", gsf_filename.c_str());
-				succeeded = false;
-
-				delete[] exe;
-				continue;
-			}
-
-			delete[] exe;
 
 			return succeeded ? EXIT_SUCCESS : EXIT_FAILURE;
 		}
