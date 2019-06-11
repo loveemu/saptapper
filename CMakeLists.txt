@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 project(saptapper C CXX)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(MSVC)
@@ -46,22 +46,22 @@ endif()
 #============================================================================
 
 set(SRCS
-    src/saptapper.cpp
-    src/BytePattern.cpp
-    src/Mp2kDriver.cpp
-    src/NatsumeDriver.cpp
-    src/VgmDriverParam.cpp
+    src/main.cpp
+    src/saptapper/byte_pattern.cpp
+    src/saptapper/cartridge.cpp
+    src/saptapper/saptapper.cpp
 )
 
 set(HDRS
-    src/BytePattern.h
-    src/cbyteio.h
-    src/cpath.h
-    src/Mp2kDriver.h
-    src/NatsumeDriver.h
-    src/saptapper.h
-    src/VgmDriver.h
-    src/VgmDriverParam.h
+    src/args.hxx
+    src/saptapper/arm.hpp
+    src/saptapper/byte_io.hpp
+    src/saptapper/byte_pattern.hpp
+    src/saptapper/cartridge.hpp
+    src/saptapper/mp2k_driver.hpp
+    src/saptapper/mp2k_driver_param.hpp
+    src/saptapper/saptapper.hpp
+    src/saptapper/types.hpp
 )
 
 add_executable(saptapper ${SRCS} ${HDRS})
