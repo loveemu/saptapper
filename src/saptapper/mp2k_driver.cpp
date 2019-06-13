@@ -6,14 +6,15 @@
 #include <array>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include "algorithm.hpp"
 #include "arm.hpp"
-#include "bytes.hpp"
 #include "byte_pattern.hpp"
-#include "mp2k_driver_param.hpp"
+#include "bytes.hpp"
 #include "minigsf_driver_param.hpp"
+#include "mp2k_driver_param.hpp"
 #include "types.hpp"
 
 namespace saptapper {
@@ -33,10 +34,12 @@ Mp2kDriverParam Mp2kDriver::Inspect(const Cartridge& cartridge) const {
 
 void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
                                   const Mp2kDriverParam& param) const {
-  if (!is_romptr(address)) throw std::invalid_argument("The gsf driver address is not valid");
+  if (!is_romptr(address))
+    throw std::invalid_argument("The gsf driver address is not valid");
 
   agbsize_t offset = to_offset(address);
-  if (offset + gsf_driver_size() > rom.size()) throw std::invalid_argument("No enough free space for gsf driver block");
+  if (offset + gsf_driver_size() > rom.size())
+    throw std::invalid_argument("No enough free space for gsf driver block");
 
   std::memcpy(&rom[offset], gsf_driver_block, gsf_driver_size());
   WriteInt32L(&rom[offset + kInitFnOffset], param.init_fn() | 1);

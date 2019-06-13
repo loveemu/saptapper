@@ -3,6 +3,7 @@
 
 #include "saptapper.hpp"
 
+#include <cstring>
 #include <iostream>
 #include <string_view>
 #include "arm.hpp"
