@@ -21,10 +21,9 @@ class Mp2kDriver {
   }
 
   constexpr agbptr_t minigsf_address(agbptr_t gsf_driver_addr) const noexcept {
-    if (gsf_driver_addr != agbnullptr)
-      return gsf_driver_addr + kSongNumberOffset;
-    else
-      return agbnullptr;
+    return (gsf_driver_addr != agbnullptr)
+               ? (gsf_driver_addr + kSongNumberOffset)
+               : agbnullptr;
   }
 
   std::string name() const { return "MusicPlayer2000"; }

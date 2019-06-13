@@ -6,11 +6,10 @@
 #include <cstring>
 #include <iostream>
 #include <string_view>
-#include "arm.hpp"
 #include "bytes.hpp"
-#include "byte_pattern.hpp"
 #include "cartridge.hpp"
-#include "files.hpp"
+#include "gsf_header.hpp"
+#include "gsf_writer.hpp"
 #include "minigsf_driver_param.hpp"
 #include "mp2k_driver.hpp"
 #include "mp2k_driver_param.hpp"
@@ -43,7 +42,7 @@ agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size,
 
 agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size) {
   constexpr bool largest = false;
-  agbptr_t addr = FindFreeSpace(rom, size, (char)0xff, largest);
+  agbptr_t addr = FindFreeSpace(rom, size, '\xff', largest);
   if (addr == agbnullptr) {
     addr = FindFreeSpace(rom, size, 0, largest);
   }
@@ -54,7 +53,7 @@ void Saptapper::Inspect(Cartridge& cartridge) const {
   Mp2kDriver driver;
   Mp2kDriverParam param = driver.Inspect(cartridge);
 
-  agbptr_t gsf_driver_addr =
+  const agbptr_t gsf_driver_addr =
     FindFreeSpace(cartridge.rom(), driver.gsf_driver_size());
 
   MinigsfDriverParam minigsf;
@@ -64,17 +63,19 @@ void Saptapper::Inspect(Cartridge& cartridge) const {
   std::cout << "Status: " << (param.ok() ? "OK" : "FAILED") << std::endl
             << std::endl;
 
-  param.WriteAsTable(std::cout);
+  (void)param.WriteAsTable(std::cout);
   std::cout << std::endl;
 
   std::cout << "minigsf information:" << std::endl << std::endl;
-  minigsf.WriteAsTable(std::cout);
+  (void)minigsf.WriteAsTable(std::cout);
 
   driver.InstallGsfDriver(cartridge.rom(), gsf_driver_addr, param);
   char nums[4];
   WriteInt32L(nums, 1);
   std::memcpy(cartridge.rom().data() + to_offset(minigsf.address()), nums, minigsf.size());
-  WriteAllBytesToFile("test.gsf.gba", cartridge.rom());
+
+  const GsfHeader gsf_header{0x8000000, 0x8000000, cartridge.size()};
+  GsfWriter::SaveToFile("test.gsf", gsf_header, cartridge.rom());
 }
 
 }  // namespace saptapper

@@ -5,22 +5,19 @@
 
 #include <array>
 #include <cassert>
-#include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <string>
 #include "algorithm.hpp"
 #include "arm.hpp"
 #include "byte_pattern.hpp"
 #include "bytes.hpp"
-#include "minigsf_driver_param.hpp"
 #include "mp2k_driver_param.hpp"
 #include "types.hpp"
 
 namespace saptapper {
 
 Mp2kDriverParam Mp2kDriver::Inspect(const Cartridge& cartridge) const {
-  std::string_view rom{cartridge.rom()};
+  const std::string_view rom{cartridge.rom()};
 
   Mp2kDriverParam param;
   param.set_select_song_fn(FindSelectSongFn(rom));
@@ -92,7 +89,7 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
       std::string_view{"\x00\xb5\x18\x48\x02\x68\x10\x68\x17\x49", 10},
       std::string_view{"xx?xxxxx?x", 10}};
 
-  agbsize_t init_fn_pos = to_offset(init_fn);
+  const agbsize_t init_fn_pos = to_offset(init_fn);
   if (init_fn_pos >= rom.size()) return agbnullptr;
 
   // The m4aSoundVSync function is far from m4aSoundInit.
@@ -126,7 +123,7 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   const agbsize_t min_pos2 = init_fn_pos + align;
   const agbsize_t max_pos2 = std::min<agbsize_t>(
       init_fn_pos + length, static_cast<agbsize_t>(rom.size()));
-  for (agbsize_t offset = min_pos; offset < max_pos; offset += align) {
+  for (agbsize_t offset = min_pos2; offset < max_pos2; offset += align) {
     if (pattern2.Match(std::string_view{rom.data() + offset, pattern2.size()}))
       return to_romptr(offset);
   }
@@ -167,7 +164,7 @@ int Mp2kDriver::ReadSongCount(std::string_view rom, agbptr_t song_table) {
   int song_count = 0;
   for (agbsize_t offset = song_table_pos; offset <= rom.size() - 8;
        offset += 8) {
-    agbptr_t song = ReadInt32L(rom.data() + offset);
+    const agbptr_t song = ReadInt32L(rom.data() + offset);
     if (!is_romptr(song)) break;
     song_count++;
   }

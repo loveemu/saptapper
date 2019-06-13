@@ -2,10 +2,8 @@ Saptapper
 =========
 [![Travis Build Status](https://travis-ci.org/loveemu/saptapper.svg?branch=master)](https://travis-ci.org/loveemu/saptapper) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/8gdychs5ftgijyui/branch/master?svg=true)](https://ci.appveyor.com/project/loveemu/saptapper/branch/master)
 
-Automated GSF ripper tool created by Caitsith2, revised by loveemu.
+Automated GSF ripper tool created by Caitsith2, reimplemented by loveemu from scratch.
 <https://github.com/loveemu/saptapper>
-
-This modified version provides some extra options that might be useful.
 
 Caitsith2's original version can be found at GSF Central
 <http://www.caitsith2.com/gsf/ripping.html>

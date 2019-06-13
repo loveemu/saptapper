@@ -28,7 +28,7 @@ Cartridge Cartridge::LoadFromFile(const std::filesystem::path& path) {
   return cartridge;
 }
 
-void Cartridge::ValidateSize(size_type size) {
+void Cartridge::ValidateSize(std::uintmax_t size) {
   if (size < kHeaderSize) {
     throw std::range_error("The input data too small");
   } else if (size > kMaximumSize) {
