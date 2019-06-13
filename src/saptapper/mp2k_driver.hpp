@@ -5,23 +5,28 @@
 #define MP2K_DRIVER_HPP_
 
 #include <string>
+#include <string_view>
 #include "cartridge.hpp"
 #include "mp2k_driver_param.hpp"
 
 namespace saptapper {
 
-class Mp2kDriver
-{
-public:
+class Mp2kDriver {
+ public:
   Mp2kDriver() = default;
 
   std::string name() const { return "MusicPlayer2000"; }
 
-  Mp2kDriverParam Inspect(const Cartridge& cartridge) const {
-    Mp2kDriverParam param;
-    param.set_minigsf_address(777);
-    return param;
-  }
+  Mp2kDriverParam Inspect(const Cartridge& cartridge) const;
+  void PrintParam(const Mp2kDriverParam& param) const;
+
+ private:
+  static agbptr_t FindInitFn(std::string_view rom, agbptr_t main_fn);
+  static agbptr_t FindMainFn(std::string_view rom, agbptr_t select_song_fn);
+  static agbptr_t FindVSyncFn(std::string_view rom, agbptr_t init_fn);
+  static agbptr_t FindSelectSongFn(std::string_view rom);
+  static agbptr_t FindSongTable(std::string_view rom, agbptr_t select_song_fn);
+  static int ReadSongCount(std::string_view rom, agbptr_t song_table);
 };
 
 }  // namespace saptapper

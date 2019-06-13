@@ -19,16 +19,16 @@ class Cartridge {
 
   Cartridge() = default;
 
-  std::string& data() { return data_; }
-  const std::string& data() const { return data_; }
-  size_type size() const { return data_.size(); }
-  std::string game_title() const { return data_.substr(0xa0, 12); }
-  std::string game_code() const { return data_.substr(0xac, 4); }
+  std::string& rom() { return rom_; }
+  const std::string& rom() const { return rom_; }
+  size_type size() const { return rom_.size(); }
+  std::string game_title() const { return rom_.substr(0xa0, 12); }
+  std::string game_code() const { return rom_.substr(0xac, 4); }
 
   static Cartridge LoadFromFile(const std::filesystem::path& path);
 
  private:
-  std::string data_;
+  std::string rom_;
 
   static void ValidateSize(size_type size);
 };

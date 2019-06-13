@@ -24,7 +24,7 @@ Cartridge Cartridge::LoadFromFile(const std::filesystem::path& path) {
   stream.read(rom.data(), size);
   stream.close();
 
-  cartridge.data_ = std::move(rom);
+  cartridge.rom_ = std::move(rom);
   return cartridge;
 }
 

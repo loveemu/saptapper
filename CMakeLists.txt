@@ -49,11 +49,13 @@ set(SRCS
     src/main.cpp
     src/saptapper/byte_pattern.cpp
     src/saptapper/cartridge.cpp
+    src/saptapper/mp2k_driver.cpp
     src/saptapper/saptapper.cpp
 )
 
 set(HDRS
     src/args.hxx
+    src/saptapper/algorithm.hpp
     src/saptapper/arm.hpp
     src/saptapper/byte_io.hpp
     src/saptapper/byte_pattern.hpp
@@ -61,6 +63,7 @@ set(HDRS
     src/saptapper/mp2k_driver.hpp
     src/saptapper/mp2k_driver_param.hpp
     src/saptapper/saptapper.hpp
+    src/saptapper/tabulate.hpp
     src/saptapper/types.hpp
 )
 

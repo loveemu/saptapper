@@ -21,13 +21,13 @@ static constexpr bool is_arm_b(const armins_t ins) {
 static constexpr armins_t make_arm_b(const agbptr_t current,
                                      const agbptr_t dest) {
   assert(current % 4 == 0 && dest % 4 == 0);
-  const agboff_t offset = dest - (current + 8);
+  const agbsize_t offset = dest - (current + 8);
   return 0xea000000 | ((offset / 4) & 0xffffff);
 }
 
 static constexpr agbptr_t arm_b_dest(const agbptr_t current,
                                      const armins_t ins) {
-  agboff_t offset = ins & 0xffffff;
+  agbsize_t offset = ins & 0xffffff;
   if ((offset & 0x800000) != 0) {
     offset |= ~0xffffff;
   }
