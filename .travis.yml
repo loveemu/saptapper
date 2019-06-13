@@ -15,5 +15,5 @@ matrix:
         - COMPILER="g++-9"
 
 script:
-  - CC=${COMPILER} CXX=${COMPILER} cmake -H. -Bbuild
-  - CC=${COMPILER} CXX=${COMPILER} cmake --build build
+  - CXX=${COMPILER} cmake -H. -Bbuild
+  - CXX=${COMPILER} cmake --build build
