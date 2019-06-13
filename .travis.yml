@@ -14,18 +14,6 @@ matrix:
       env:
         - COMPILER="g++-9"
 
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-8
-          packages:
-            - g++-6
-            - clang-8
-      env:
-        - COMPILER="clang++-8"
-
 script:
-  - CXX=${COMPILER} cmake -H. -Bbuild
-  - CXX=${COMPILER} cmake --build build
+  - CC=${COMPILER} CXX=${COMPILER} cmake -H. -Bbuild
+  - CC=${COMPILER} CXX=${COMPILER} cmake --build build
