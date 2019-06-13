@@ -12,8 +12,8 @@ matrix:
           packages:
             - g++-9
       env:
-        - CC="g++-9" CXX="g++-9"
+        - COMPILER="g++-9"
 
 script:
-  - cmake -H. -Bbuild
-  - cmake --build build
+  - CC=${COMPILER} CXX=${COMPILER} cmake -H. -Bbuild
+  - CC=${COMPILER} CXX=${COMPILER} cmake --build build
