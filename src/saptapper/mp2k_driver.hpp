@@ -28,7 +28,7 @@ class Mp2kDriver {
 
   std::string name() const { return "MusicPlayer2000"; }
 
-  Mp2kDriverParam Inspect(const Cartridge& cartridge) const;
+  Mp2kDriverParam Inspect(std::string_view rom) const;
 
   void InstallGsfDriver(std::string& rom, agbptr_t address,
                         const Mp2kDriverParam& param) const;

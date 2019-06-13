@@ -34,8 +34,10 @@ int main(int argc, const char** argv) {
     }
 
     Cartridge cartridge = Cartridge::LoadFromFile(in_path);
-    Saptapper saptapper;
-    saptapper.Inspect(cartridge);
+
+    std::filesystem::path basename{in_path.stem()};
+    std::string gsfby{"loveemu"};
+    Saptapper::ConvertToGsfSet(cartridge, basename, gsfby);
   } catch (std::exception& e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;

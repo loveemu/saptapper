@@ -3,10 +3,10 @@
 
 #include "saptapper.hpp"
 
-#include <cstring>
+#include <filesystem>
 #include <iostream>
+#include <sstream>
 #include <string_view>
-#include "bytes.hpp"
 #include "cartridge.hpp"
 #include "gsf_header.hpp"
 #include "gsf_writer.hpp"
@@ -15,6 +15,71 @@
 #include "mp2k_driver_param.hpp"
 
 namespace saptapper {
+
+void Saptapper::ConvertToGsfSet(Cartridge& cartridge,
+                                const std::filesystem::path& basename,
+                                const std::string_view& gsfby) {
+  Mp2kDriver driver;
+  Mp2kDriverParam param = driver.Inspect(cartridge.rom());
+
+  const agbptr_t gsf_driver_addr =
+      FindFreeSpace(cartridge.rom(), driver.gsf_driver_size());
+
+  MinigsfDriverParam minigsf;
+  minigsf.set_address(driver.minigsf_address(gsf_driver_addr));
+  minigsf.set_size(GetMinigsfSize(param.song_count()));
+
+  driver.InstallGsfDriver(cartridge.rom(), gsf_driver_addr, param);
+
+  std::filesystem::path gsflib_path{basename};
+  gsflib_path += ".gsflib";
+
+  std::map<std::string, std::string> gsflib_tags;
+  if (!gsfby.empty()) gsflib_tags["gsfby"] = gsfby;
+
+  const agbptr_t entrypoint = 0x8000000;
+  const GsfHeader gsf_header{entrypoint, entrypoint, cartridge.size()};
+  GsfWriter::SaveToFile(gsflib_path, gsf_header, cartridge.rom(),
+                        std::move(gsflib_tags));
+
+  for (int song = 0; song < param.song_count(); song++) {
+    std::ostringstream songid;
+    songid << std::setfill('0') << std::setw(4) << song;
+
+    std::filesystem::path minigsf_path{basename};
+    minigsf_path += "-";
+    minigsf_path += songid.str();
+    minigsf_path += ".minigsf";
+
+    std::map<std::string, std::string> minigsf_tags{
+        {"_lib", gsflib_path.filename().string()}};
+    if (!gsfby.empty()) minigsf_tags["gsfby"] = gsfby;
+
+    GsfWriter::SaveMinigsfToFile(minigsf_path, minigsf, song,
+                                 std::move(minigsf_tags));
+  }
+}
+
+void Saptapper::Inspect(const Cartridge& cartridge) {
+  Mp2kDriver driver;
+  Mp2kDriverParam param = driver.Inspect(cartridge.rom());
+
+  const agbptr_t gsf_driver_addr =
+      FindFreeSpace(cartridge.rom(), driver.gsf_driver_size());
+
+  MinigsfDriverParam minigsf;
+  minigsf.set_address(driver.minigsf_address(gsf_driver_addr));
+  minigsf.set_size(GetMinigsfSize(param.song_count()));
+
+  std::cout << "Status: " << (param.ok() ? "OK" : "FAILED") << std::endl
+            << std::endl;
+
+  (void)param.WriteAsTable(std::cout);
+  std::cout << std::endl;
+
+  std::cout << "minigsf information:" << std::endl << std::endl;
+  (void)minigsf.WriteAsTable(std::cout);
+}
 
 agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size,
                                   char filler, bool largest) {
@@ -47,35 +112,6 @@ agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size) {
     addr = FindFreeSpace(rom, size, 0, largest);
   }
   return addr;
-}
-
-void Saptapper::Inspect(Cartridge& cartridge) const {
-  Mp2kDriver driver;
-  Mp2kDriverParam param = driver.Inspect(cartridge);
-
-  const agbptr_t gsf_driver_addr =
-    FindFreeSpace(cartridge.rom(), driver.gsf_driver_size());
-
-  MinigsfDriverParam minigsf;
-  minigsf.set_address(driver.minigsf_address(gsf_driver_addr));
-  minigsf.set_size(GetMinigsfSize(param.song_count()));
-
-  std::cout << "Status: " << (param.ok() ? "OK" : "FAILED") << std::endl
-            << std::endl;
-
-  (void)param.WriteAsTable(std::cout);
-  std::cout << std::endl;
-
-  std::cout << "minigsf information:" << std::endl << std::endl;
-  (void)minigsf.WriteAsTable(std::cout);
-
-  driver.InstallGsfDriver(cartridge.rom(), gsf_driver_addr, param);
-  char nums[4];
-  WriteInt32L(nums, 1);
-  std::memcpy(cartridge.rom().data() + to_offset(minigsf.address()), nums, minigsf.size());
-
-  const GsfHeader gsf_header{0x8000000, 0x8000000, cartridge.size()};
-  GsfWriter::SaveToFile("test.gsf", gsf_header, cartridge.rom());
 }
 
 }  // namespace saptapper

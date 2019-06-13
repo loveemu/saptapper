@@ -7,8 +7,10 @@
 
 namespace saptapper {
 
-PsfWriter::PsfWriter(uint8_t version)
-    : version_{version}, exe_{compressed_exe_, zstr::default_buff_size, Z_BEST_COMPRESSION, 15} {}
+PsfWriter::PsfWriter(uint8_t version, std::map<std::string, std::string> tags)
+    : version_{version},
+      exe_{compressed_exe_, zstr::default_buff_size, Z_BEST_COMPRESSION, 15},
+      tags_(std::move(tags)) {}
 
 void PsfWriter::SaveToFile(const std::filesystem::path& path) {
   std::ofstream file(path, std::ios::out | std::ios::binary);
@@ -31,6 +33,20 @@ void PsfWriter::SaveToStream(std::ostream& out) {
   out.write(header.data(), header.size());
   out.write(reserved.data(), reserved.size());
   out.write(compressed_exe.data(), compressed_exe.size());
+
+  if (!tags_.empty()) {
+    out.write("[TAG]", 5);
+
+    for (const auto& tag : tags_) {
+      const auto& key = tag.first;
+      const auto& value = tag.second;
+
+      std::istringstream value_reader{value};
+      std::string line;
+      while (std::getline(value_reader, line))
+        out << key << '=' << value << '\n';
+    }
+  }
 }
 
 std::string PsfWriter::NewHeader(std::string_view compressed_exe,

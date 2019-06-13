@@ -4,6 +4,7 @@
 #ifndef SAPTAPPER_HPP_
 #define SAPTAPPER_HPP_
 
+#include <filesystem>
 #include "cartridge.hpp"
 #include "types.hpp"
 
@@ -11,10 +12,12 @@ namespace saptapper {
 
 class Saptapper {
  public:
-  Saptapper() = default;
+  static void ConvertToGsfSet(Cartridge& cartridge,
+                              const std::filesystem::path& basename,
+                              const std::string_view& gsfby = "");
+  static void Inspect(const Cartridge& cartridge);
 
-  void Inspect(Cartridge& cartridge) const;
-
+ private:
   static agbptr_t FindFreeSpace(std::string_view rom, agbsize_t size);
   static agbptr_t FindFreeSpace(std::string_view rom, agbsize_t size,
                                 char filter, bool largest);

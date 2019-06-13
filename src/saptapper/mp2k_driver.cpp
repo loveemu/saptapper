@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include "algorithm.hpp"
 #include "arm.hpp"
 #include "byte_pattern.hpp"
@@ -16,9 +17,7 @@
 
 namespace saptapper {
 
-Mp2kDriverParam Mp2kDriver::Inspect(const Cartridge& cartridge) const {
-  const std::string_view rom{cartridge.rom()};
-
+Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom) const {
   Mp2kDriverParam param;
   param.set_select_song_fn(FindSelectSongFn(rom));
   param.set_song_table(FindSongTable(rom, param.select_song_fn()));
@@ -33,6 +32,9 @@ void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
                                   const Mp2kDriverParam& param) const {
   if (!is_romptr(address))
     throw std::invalid_argument("The gsf driver address is not valid");
+  if (!param.ok())
+    throw std::invalid_argument(
+        "Identification of MusicPlayer2000 driver is incomplete");
 
   agbsize_t offset = to_offset(address);
   if (offset + gsf_driver_size() > rom.size())
@@ -50,33 +52,32 @@ void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
 agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {
   if (main_fn == agbnullptr) return agbnullptr;
 
+  using namespace std::literals::string_view_literals;
   std::array patterns = {
-      std::string_view{"\x70\xb5", 2},  // push {r4-r6,lr}
-      std::string_view{"\xf0\xb5", 2},  // push {r4-r7,lr}
+      "\x70\xb5"sv,  // push {r4-r6,lr}
+      "\xf0\xb5"sv,  // push {r4-r7,lr}};
   };
   return find_backwards(rom, patterns, to_offset(main_fn), 0x100);
-}
+}  // namespace saptapper
 
 agbptr_t Mp2kDriver::FindMainFn(std::string_view rom, agbptr_t select_song_fn) {
   if (select_song_fn == agbnullptr) return agbnullptr;
 
-  std::array patterns{
-      std::string_view{"\x00\xb5", 2}  // push lr
-  };
+  using namespace std::literals::string_view_literals;
+  std::array patterns{"\x00\xb5"sv};  // push lr
   return find_backwards(rom, patterns, to_offset(select_song_fn), 0x20);
 }
 
 agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   if (init_fn == agbnullptr) return agbnullptr;
 
+  using namespace std::literals::string_view_literals;
   // LDR     R0, =dword_3007FF0
   // LDR     R0, [R0]
   // LDR     R2, =0x68736D53
   // LDR     R3, [R0]
   // SUBS (later versions) or CMP (earlier versions, such as Momotarou Matsuri)
-  const BytePattern pattern{
-      std::string_view{"\xa6\x48\x00\x68\xa6\x4a\x03\x68", 8},
-      std::string_view{"?xxx?xxx", 8}};
+  const BytePattern pattern{"\xa6\x48\x00\x68\xa6\x4a\x03\x68"sv, "?xxx?xxx"sv};
 
   // Pattern for Puyo Pop Fever, Precure, etc.:
   //
@@ -85,9 +86,8 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   // LDR     R2, [R0]
   // LDR     R0, [R2]
   // LDR     R1, =0x978C92AD
-  const BytePattern pattern2{
-      std::string_view{"\x00\xb5\x18\x48\x02\x68\x10\x68\x17\x49", 10},
-      std::string_view{"xx?xxxxx?x", 10}};
+  const BytePattern pattern2{"\x00\xb5\x18\x48\x02\x68\x10\x68\x17\x49"sv,
+                             "xx?xxxxx?x"sv};
 
   const agbsize_t init_fn_pos = to_offset(init_fn);
   if (init_fn_pos >= rom.size()) return agbnullptr;
@@ -132,11 +132,11 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
 }
 
 agbptr_t Mp2kDriver::FindSelectSongFn(std::string_view rom) {
+  using namespace std::literals::string_view_literals;
   const std::string_view pattern{
-      "\x00\xb5\x00\x04\x07\x4a\x08\x49\x40\x0b"
-      "\x40\x18\x83\x88\x59\x00\xc9\x18\x89\x00"
-      "\x89\x18\x0a\x68\x01\x68\x10\x1c\x00\xf0",
-      0x1e};
+      "\x00\xb5\x00\x04\x07\x4a\x08\x49\x40\x0b"sv
+      "\x40\x18\x83\x88\x59\x00\xc9\x18\x89\x00"sv
+      "\x89\x18\x0a\x68\x01\x68\x10\x1c\x00\xf0"sv};
   return find_loose(rom, pattern, 8);
 }
 
