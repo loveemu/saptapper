@@ -5,13 +5,16 @@
 
 #include <array>
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include "algorithm.hpp"
-#include "byte_io.hpp"
+#include "arm.hpp"
+#include "bytes.hpp"
 #include "byte_pattern.hpp"
+#include "mp2k_driver_param.hpp"
+#include "minigsf_driver_param.hpp"
 #include "types.hpp"
-#include "tabulate.hpp"
 
 namespace saptapper {
 
@@ -25,8 +28,23 @@ Mp2kDriverParam Mp2kDriver::Inspect(const Cartridge& cartridge) const {
   param.set_init_fn(FindInitFn(rom, param.main_fn()));
   param.set_vsync_fn(FindVSyncFn(rom, param.init_fn()));
   param.set_song_count(ReadSongCount(rom, param.song_table()));
-
   return param;
+}
+
+void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
+                                  const Mp2kDriverParam& param) const {
+  if (!is_romptr(address)) throw std::invalid_argument("The gsf driver address is not valid");
+
+  agbsize_t offset = to_offset(address);
+  if (offset + gsf_driver_size() > rom.size()) throw std::invalid_argument("No enough free space for gsf driver block");
+
+  std::memcpy(&rom[offset], gsf_driver_block, gsf_driver_size());
+  WriteInt32L(&rom[offset + kInitFnOffset], param.init_fn() | 1);
+  WriteInt32L(&rom[offset + kSelectSongFnOffset], param.select_song_fn() | 1);
+  WriteInt32L(&rom[offset + kMainFnOffset], param.main_fn() | 1);
+  WriteInt32L(&rom[offset + kVSyncFnOffset], param.vsync_fn() | 1);
+
+  WriteInt32L(rom.data(), make_arm_b(0x8000000, address));
 }
 
 agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {
@@ -39,8 +57,7 @@ agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {
   return find_backwards(rom, patterns, to_offset(main_fn), 0x100);
 }
 
-agbptr_t Mp2kDriver::FindMainFn(std::string_view rom,
-                                agbptr_t select_song_fn) {
+agbptr_t Mp2kDriver::FindMainFn(std::string_view rom, agbptr_t select_song_fn) {
   if (select_song_fn == agbnullptr) return agbnullptr;
 
   std::array patterns{
@@ -58,8 +75,8 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   // LDR     R3, [R0]
   // SUBS (later versions) or CMP (earlier versions, such as Momotarou Matsuri)
   const BytePattern pattern{
-      std::string_view{"\xa6\x48\x00\x68\xa6\x4a\x03\x68      ", 14},
-      std::string_view{"?xxx?xxx??????", 14}};
+      std::string_view{"\xa6\x48\x00\x68\xa6\x4a\x03\x68", 8},
+      std::string_view{"?xxx?xxx", 8}};
 
   // Pattern for Puyo Pop Fever, Precure, etc.:
   //
@@ -76,7 +93,8 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   if (init_fn_pos >= rom.size()) return agbnullptr;
 
   // The m4aSoundVSync function is far from m4aSoundInit.
-  constexpr agbsize_t length = 0x1800;  // 0x1000 might be good, but longer is safer anyway :)
+  constexpr agbsize_t length =
+      0x1800;  // 0x1000 might be good, but longer is safer anyway :)
   constexpr agbsize_t align = 4;
   assert(length % align == 0);
   if (rom.size() < length) return agbnullptr;
@@ -90,7 +108,10 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
     if (pattern.Match(std::string_view{rom.data() + offset, pattern.size()})) {
       // Momotarou Matsuri:
       // check "BX LR" and avoid false-positive
-      if (ReadInt16L(rom.data() + offset + 0x0c) == 0x4770) continue;
+      if (offset + 0x0e >= rom.size() &&
+          ReadInt16L(rom.data() + offset + 0x0c) == 0x4770) {
+        continue;
+      }
 
       return to_romptr(offset);
     }
@@ -148,24 +169,6 @@ int Mp2kDriver::ReadSongCount(std::string_view rom, agbptr_t song_table) {
     song_count++;
   }
   return song_count;
-}
-
-void Mp2kDriver::PrintParam(const Mp2kDriverParam& param) const {
-  std::ostream& stream = std::cout;
-  stream << "Status: " << (param.ok() ? "OK" : "FAILED") << std::endl
-         << std::endl;
-
-  using row_t = std::array<std::string, 2>;
-  const row_t header{"Name", "Address / Value"};
-  std::array items{
-      row_t{"m4aSoundVSync", to_string(param.vsync_fn())},
-      row_t{"m4aSoundInit", to_string(param.init_fn())},
-      row_t{"m4aSoundMain", to_string(param.main_fn())},
-      row_t{"m4aSongNumStart", to_string(param.select_song_fn())},
-      row_t{"song_table", to_string(param.song_table())},
-      row_t{"len(song_table)", std::to_string(param.song_count())},
-  };
-  tabulate(stream, header, items);
 }
 
 }  // namespace saptapper

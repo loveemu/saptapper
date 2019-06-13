@@ -33,7 +33,7 @@ int main(int argc, const char** argv) {
       return EXIT_FAILURE;
     }
 
-    const Cartridge cartridge = Cartridge::LoadFromFile(in_path);
+    Cartridge cartridge = Cartridge::LoadFromFile(in_path);
     Saptapper saptapper;
     saptapper.Inspect(cartridge);
   } catch (std::exception& e) {

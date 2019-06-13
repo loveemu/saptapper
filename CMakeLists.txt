@@ -57,9 +57,11 @@ set(HDRS
     src/args.hxx
     src/saptapper/algorithm.hpp
     src/saptapper/arm.hpp
-    src/saptapper/byte_io.hpp
+    src/saptapper/bytes.hpp
     src/saptapper/byte_pattern.hpp
     src/saptapper/cartridge.hpp
+    src/saptapper/files.hpp
+    src/saptapper/minigsf_driver_param.hpp
     src/saptapper/mp2k_driver.hpp
     src/saptapper/mp2k_driver_param.hpp
     src/saptapper/saptapper.hpp
