@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstring>
 #include <string_view>
 #include "types.hpp"
 
@@ -50,7 +51,8 @@ static agbptr_t find_backwards(std::string_view rom,
   const agbsize_t min_pos = pos - length;
   for (agbsize_t offset = max_pos; offset >= min_pos; offset -= align) {
     for (const auto& pattern : patterns) {
-      if (memcmp(rom.data() + offset, pattern.data(), pattern.size()) == 0) {
+      if (std::memcmp(rom.data() + offset, pattern.data(), pattern.size()) ==
+          0) {
         return to_romptr(offset);
       }
     }
