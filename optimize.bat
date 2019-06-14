@@ -1,1 +1,0 @@
-gsfopt -l *.minigsf
