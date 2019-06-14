@@ -1,12 +1,10 @@
-/// @file
-/// Header file for Mp2kDriver class.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
-#ifndef MP2K_DRIVER_HPP_
-#define MP2K_DRIVER_HPP_
+#ifndef SAPTAPPER_MP2K_DRIVER_HPP_
+#define SAPTAPPER_MP2K_DRIVER_HPP_
 
 #include <string>
 #include <string_view>
-#include "cartridge.hpp"
 #include "mp2k_driver_param.hpp"
 #include "types.hpp"
 

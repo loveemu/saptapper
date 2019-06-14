@@ -1,5 +1,4 @@
-/// @file
-/// Algorithms.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #ifndef SAPTAPPER_ALGORITHM_HPP_
 #define SAPTAPPER_ALGORITHM_HPP_

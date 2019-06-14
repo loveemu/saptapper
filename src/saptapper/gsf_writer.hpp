@@ -1,3 +1,5 @@
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
+
 #ifndef SAPTAPPER_GSF_WRITER_HPP_
 #define SAPTAPPER_GSF_WRITER_HPP_
 
@@ -8,7 +10,6 @@
 #include <string_view>
 #include "gsf_header.hpp"
 #include "minigsf_driver_param.hpp"
-#include "types.hpp"
 
 namespace saptapper {
 

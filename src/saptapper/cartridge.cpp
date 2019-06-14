@@ -1,5 +1,4 @@
-/// @file
-/// Saptapper: Automated GSF ripper for MusicPlayer2000.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #include "cartridge.hpp"
 
@@ -30,9 +29,9 @@ Cartridge Cartridge::LoadFromFile(const std::filesystem::path& path) {
 
 void Cartridge::ValidateSize(std::uintmax_t size) {
   if (size < kHeaderSize) {
-    throw std::range_error("The input data too small");
+    throw std::range_error("The input data too small.");
   } else if (size > kMaximumSize) {
-    throw std::range_error("The input data too large");
+    throw std::range_error("The input data too large.");
   }
 }
 

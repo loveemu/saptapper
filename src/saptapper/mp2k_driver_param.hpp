@@ -1,11 +1,9 @@
-/// @file
-/// Header file for SoundDriverParam class.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
-#ifndef MP2K_DRIVER_PARAM_HPP_
-#define MP2K_DRIVER_PARAM_HPP_
+#ifndef SAPTAPPER_MP2K_DRIVER_PARAM_HPP_
+#define SAPTAPPER_MP2K_DRIVER_PARAM_HPP_
 
 #include <array>
-#include <iostream>
 #include <string>
 #include "tabulate.hpp"
 #include "types.hpp"

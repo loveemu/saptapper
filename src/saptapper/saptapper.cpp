@@ -1,5 +1,4 @@
-/// @file
-/// Saptapper: Automated GSF ripper for MusicPlayer2000.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #include "saptapper.hpp"
 
@@ -18,12 +17,27 @@ namespace saptapper {
 
 void Saptapper::ConvertToGsfSet(Cartridge& cartridge,
                                 const std::filesystem::path& basename,
+                                const std::filesystem::path& outdir,
                                 const std::string_view& gsfby) {
   Mp2kDriver driver;
   Mp2kDriverParam param = driver.Inspect(cartridge.rom());
+  if (!param.ok()) {
+    std::ostringstream message;
+    message << "Identification of MusicPlayer2000 driver is incomplete."
+            << std::endl
+            << std::endl;
+    (void)param.WriteAsTable(message);
+    throw std::runtime_error(message.str());
+  }
 
   const agbptr_t gsf_driver_addr =
       FindFreeSpace(cartridge.rom(), driver.gsf_driver_size());
+  if (gsf_driver_addr == agbnullptr) {
+    std::ostringstream message;
+    message << "Unable to find the free space for gsf driver block ("
+            << driver.gsf_driver_size() << " bytes required).";
+    throw std::runtime_error(message.str());
+  }
 
   MinigsfDriverParam minigsf;
   minigsf.set_address(driver.minigsf_address(gsf_driver_addr));
@@ -31,22 +45,22 @@ void Saptapper::ConvertToGsfSet(Cartridge& cartridge,
 
   driver.InstallGsfDriver(cartridge.rom(), gsf_driver_addr, param);
 
-  std::filesystem::path gsflib_path{basename};
-  gsflib_path += ".gsflib";
+  std::filesystem::path basepath{outdir};
+  basepath /= basename;
+  create_directories(basepath.parent_path());
 
-  std::map<std::string, std::string> gsflib_tags;
-  if (!gsfby.empty()) gsflib_tags["gsfby"] = gsfby;
+  std::filesystem::path gsflib_path{basepath};
+  gsflib_path += ".gsflib";
 
   const agbptr_t entrypoint = 0x8000000;
   const GsfHeader gsf_header{entrypoint, entrypoint, cartridge.size()};
-  GsfWriter::SaveToFile(gsflib_path, gsf_header, cartridge.rom(),
-                        std::move(gsflib_tags));
+  GsfWriter::SaveToFile(gsflib_path, gsf_header, cartridge.rom());
 
   for (int song = 0; song < param.song_count(); song++) {
     std::ostringstream songid;
     songid << std::setfill('0') << std::setw(4) << song;
 
-    std::filesystem::path minigsf_path{basename};
+    std::filesystem::path minigsf_path{basepath};
     minigsf_path += "-";
     minigsf_path += songid.str();
     minigsf_path += ".minigsf";

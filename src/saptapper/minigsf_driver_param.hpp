@@ -1,5 +1,4 @@
-/// @file
-/// Header file for SoundDriverParam class.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #ifndef SAPTAPPER_MINIGSF_DRIVER_PARAM_HPP_
 #define SAPTAPPER_MINIGSF_DRIVER_PARAM_HPP_

@@ -1,8 +1,7 @@
-/// @file
-/// ARM/THUMB instruction utility.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
-#ifndef ARM_HPP_
-#define ARM_HPP_
+#ifndef SAPTAPPER_ARM_HPP_
+#define SAPTAPPER_ARM_HPP_
 
 #include <cassert>
 #include <cstdint>

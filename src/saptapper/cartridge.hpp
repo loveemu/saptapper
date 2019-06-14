@@ -1,5 +1,4 @@
-/// @file
-/// Header file for GBA Cartridge class.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #ifndef CARTRIDGE_HPP_
 #define CARTRIDGE_HPP_

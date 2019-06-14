@@ -1,8 +1,7 @@
-/// @file
-/// Primitive types and functions for GBA.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
-#ifndef TYPES_HPP_
-#define TYPES_HPP_
+#ifndef SAPTAPPER_TYPES_HPP_
+#define SAPTAPPER_TYPES_HPP_
 
 #include <cstdint>
 #include <sstream>

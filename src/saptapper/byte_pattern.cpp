@@ -1,3 +1,5 @@
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
+
 #include "byte_pattern.hpp"
 
 #include <string>

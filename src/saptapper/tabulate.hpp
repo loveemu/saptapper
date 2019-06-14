@@ -1,5 +1,4 @@
-/// @file
-/// Tabulate function for fancy output.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #ifndef SAPTAPPER_TABULATE_HPP_
 #define SAPTAPPER_TABULATE_HPP_

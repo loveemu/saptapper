@@ -1,3 +1,5 @@
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
+
 #ifndef SAPTAPPER_PSF_WRITER_HPP_
 #define SAPTAPPER_PSF_WRITER_HPP_
 

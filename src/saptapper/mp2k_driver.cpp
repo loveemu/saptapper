@@ -1,11 +1,11 @@
-/// @file
-/// Source file for Mp2kDriver class.
+// Saptapper: Automated GSF ripper for MusicPlayer2000.
 
 #include "mp2k_driver.hpp"
 
 #include <array>
 #include <cassert>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include "algorithm.hpp"
@@ -31,14 +31,18 @@ Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom) const {
 void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
                                   const Mp2kDriverParam& param) const {
   if (!is_romptr(address))
-    throw std::invalid_argument("The gsf driver address is not valid");
-  if (!param.ok())
-    throw std::invalid_argument(
-        "Identification of MusicPlayer2000 driver is incomplete");
+    throw std::invalid_argument("The gsf driver address is not valid.");
+  if (!param.ok()) {
+    std::ostringstream message;
+    message << "Identification of MusicPlayer2000 driver is incomplete."
+            << std::endl << std::endl;
+    (void)param.WriteAsTable(message);
+    throw std::invalid_argument(message.str());
+  }
 
   agbsize_t offset = to_offset(address);
   if (offset + gsf_driver_size() > rom.size())
-    throw std::invalid_argument("No enough free space for gsf driver block");
+    throw std::out_of_range("The address of gsf driver block is out of range.");
 
   std::memcpy(&rom[offset], gsf_driver_block, gsf_driver_size());
   WriteInt32L(&rom[offset + kInitFnOffset], param.init_fn() | 1);
