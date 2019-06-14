@@ -59,14 +59,22 @@ int main(int argc, const char** argv) {
     Cartridge cartridge = Cartridge::LoadFromFile(in_path);
 
     if (inspect_arg) {
-      Saptapper::Inspect(cartridge);
+      Mp2kDriverParam param;
+      MinigsfDriverParam minigsf;
+      agbptr_t gsf_driver_addr = agbnullptr;
+      Saptapper::Inspect(cartridge, param, minigsf, gsf_driver_addr);
+      Saptapper::PrintParam(param, minigsf);
     } else {
       const std::filesystem::path basename{
           basename_arg ? args::get(basename_arg) : in_path.stem()};
       const std::filesystem::path outdir{args::get(outdir_arg)};
       std::string gsfby{args::get(gsfby_arg)};
-      if (!gsfby.empty() && gsfby != "Caitsith2")
-        gsfby.insert(0, "Saptapper, with help of ");
+      if (gsfby != "Caitsith2") {
+        if (gsfby.empty())
+          gsfby = "Saptapper";
+        else
+          gsfby.insert(0, "Saptapper, with help of ");
+      }
 
       Saptapper::ConvertToGsfSet(cartridge, basename, outdir, gsfby);
     }

@@ -14,14 +14,16 @@ PsfWriter::PsfWriter(uint8_t version, std::map<std::string, std::string> tags)
       exe_{compressed_exe_, zstr::default_buff_size, Z_BEST_COMPRESSION, 15},
       tags_(std::move(tags)) {}
 
-void PsfWriter::SaveToFile(const std::filesystem::path& path) {
+void PsfWriter::SaveToFile(const std::filesystem::path& path,
+                           const std::map<std::string, std::string>& tags) {
   std::ofstream file(path, std::ios::out | std::ios::binary);
   file.exceptions(std::ios::badbit);
-  SaveToStream(file);
+  SaveToStream(file, tags);
   file.close();
 }
 
-void PsfWriter::SaveToStream(std::ostream& out) {
+void PsfWriter::SaveToStream(std::ostream& out,
+                             const std::map<std::string, std::string>& tags) {
   exe_.flush();
   reserved_.flush();
 
@@ -31,15 +33,16 @@ void PsfWriter::SaveToStream(std::ostream& out) {
       crc32(0L, reinterpret_cast<const Bytef*>(compressed_exe.data()),
             static_cast<uInt>(compressed_exe.size()));
 
-  const std::string header{NewHeader(compressed_exe, reserved, compressed_exe_crc32)};
+  const std::string header{
+      NewHeader(compressed_exe, reserved, compressed_exe_crc32)};
   out.write(header.data(), header.size());
   out.write(reserved.data(), reserved.size());
   out.write(compressed_exe.data(), compressed_exe.size());
 
-  if (!tags_.empty()) {
+  if (!tags.empty()) {
     out.write("[TAG]", 5);
 
-    for (const auto& tag : tags_) {
+    for (const auto& tag : tags) {
       const auto& key = tag.first;
       const auto& value = tag.second;
 

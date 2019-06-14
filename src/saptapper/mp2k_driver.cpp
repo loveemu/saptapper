@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include "algorithm.hpp"

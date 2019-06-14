@@ -22,8 +22,17 @@ class PsfWriter {
   std::ostream& reserved() noexcept { return reserved_; }
   std::map<std::string, std::string>& tags() noexcept { return tags_; }
 
-  void SaveToFile(const std::filesystem::path& path);
-  void SaveToStream(std::ostream& out);
+  void SaveToFile(const std::filesystem::path& path) {
+    SaveToFile(path, tags_);
+  }
+
+  void SaveToFile(const std::filesystem::path& path,
+                  const std::map<std::string, std::string>& tags);
+
+  void SaveToStream(std::ostream& out) { SaveToStream(out, tags_); }
+
+  void SaveToStream(std::ostream& out,
+                    const std::map<std::string, std::string>& tags);
 
  private:
   uint8_t version_;

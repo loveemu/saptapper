@@ -17,21 +17,19 @@ class GsfWriter {
  public:
   static void SaveToFile(const std::filesystem::path& path,
                          const GsfHeader& header, std::string_view rom,
-                         std::map<std::string, std::string> tags = {});
+                         const std::map<std::string, std::string>& tags = {});
 
   static void SaveToStream(std::ostream& out, const GsfHeader& header,
                            std::string_view rom,
-                           std::map<std::string, std::string> tags = {});
+                           const std::map<std::string, std::string>& tags = {});
 
-  static void SaveMinigsfToFile(const std::filesystem::path& path,
-                                const MinigsfDriverParam& param,
-                                std::uint32_t song,
-                                std::map<std::string, std::string> tags = {});
+  static void SaveMinigsfToFile(
+      const std::filesystem::path& path, const MinigsfDriverParam& param,
+      std::uint32_t song, const std::map<std::string, std::string>& tags = {});
 
-  static void SaveMinigsfToStream(std::ostream& out,
-                                  const MinigsfDriverParam& param,
-                                  std::uint32_t song,
-                                  std::map<std::string, std::string> tags = {});
+  static void SaveMinigsfToStream(
+      std::ostream& out, const MinigsfDriverParam& param, std::uint32_t song,
+      const std::map<std::string, std::string>& tags = {});
 
  private:
   static constexpr std::uint8_t kVersion = 0x22;
