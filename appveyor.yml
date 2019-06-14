@@ -14,16 +14,6 @@ environment:
     arch: vs2017-x64
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
 
-  - generator: "Visual Studio 14"
-    config: Release
-    arch: vs2015-x86
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-
-  - generator: "Visual Studio 14 Win64"
-    config: Release
-    arch: vs2015-x64
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-
 init:
   - git config --global core.autocrlf input
 
