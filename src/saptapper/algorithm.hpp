@@ -29,8 +29,7 @@ static agbptr_t find_loose(std::string_view rom, std::string_view pattern,
   constexpr agbsize_t align = 4;
   for (agbsize_t offset = pos; offset < rom.size() - pattern.size();
        offset += align) {
-    if (memcmp_loose(rom.data() + offset, pattern.data(), pattern.size(),
-                     max_diff))
+    if (memcmp_loose(&rom[offset], pattern.data(), pattern.size(), max_diff))
       return to_romptr(offset);
   }
   return agbnullptr;
@@ -50,10 +49,8 @@ static agbptr_t find_backwards(std::string_view rom,
   const agbsize_t min_pos = pos - length;
   for (agbsize_t offset = max_pos; offset >= min_pos; offset -= align) {
     for (const auto& pattern : patterns) {
-      if (std::memcmp(rom.data() + offset, pattern.data(), pattern.size()) ==
-          0) {
+      if (std::memcmp(&rom[offset], pattern.data(), pattern.size()) == 0)
         return to_romptr(offset);
-      }
     }
   }
   return agbnullptr;

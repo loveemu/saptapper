@@ -86,8 +86,10 @@ void Saptapper::Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
     throw std::runtime_error(message.str());
   }
 
-  gsf_driver_addr =
-      FindFreeSpace(cartridge.rom(), Mp2kDriver::gsf_driver_size());
+  if (gsf_driver_addr == agbnullptr)
+    gsf_driver_addr =
+        FindFreeSpace(cartridge.rom(), Mp2kDriver::gsf_driver_size());
+
   if (throw_if_missing && gsf_driver_addr == agbnullptr) {
     std::ostringstream message;
     message << "Unable to find the free space for gsf driver block ("
@@ -113,7 +115,7 @@ void Saptapper::PrintParam(const Mp2kDriverParam& param,
 
 agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size,
                                   char filler, bool largest) {
-  agbptr_t space = 0;
+  agbptr_t space = agbnullptr;
   agbsize_t space_size = 0;
   for (agbsize_t offset = 0; offset < rom.size(); offset += 4) {
     if (rom[offset] == filler) {

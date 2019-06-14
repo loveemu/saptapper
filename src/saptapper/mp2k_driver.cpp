@@ -127,11 +127,11 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   const agbsize_t max_pos = init_fn_pos - align;
   const agbsize_t min_pos = init_fn_pos - length;
   for (agbsize_t offset = max_pos; offset >= min_pos; offset -= align) {
-    if (pattern.Match(std::string_view{rom.data() + offset, pattern.size()})) {
-      // Momotarou Matsuri:
+    if (pattern.Match(rom, offset)) {
+      // Momotarou Matsuri, Puyo Pop Fever:
       // check "BX LR" and avoid false-positive
-      if (offset + 0x0e >= rom.size() &&
-          ReadInt16L(rom.data() + offset + 0x0c) == 0x4770) {
+      if (offset + 0x0c + 2 <= rom.size() &&
+          ReadInt16L(&rom[offset + 0x0c]) == 0x4770) {
         continue;
       }
 
@@ -146,7 +146,7 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   const agbsize_t max_pos2 = std::min<agbsize_t>(
       init_fn_pos + length, static_cast<agbsize_t>(rom.size()));
   for (agbsize_t offset = min_pos2; offset < max_pos2; offset += align) {
-    if (pattern2.Match(std::string_view{rom.data() + offset, pattern2.size()}))
+    if (pattern2.Match(rom, offset))
       return to_romptr(offset);
   }
 
@@ -169,7 +169,7 @@ agbptr_t Mp2kDriver::FindSongTable(std::string_view rom,
   const agbsize_t select_song_fn_pos = to_offset(select_song_fn);
   if (select_song_fn_pos + 40 + 4 > rom.size()) return agbnullptr;
 
-  const agbptr_t song_table = ReadInt32L(rom.data() + select_song_fn_pos + 40);
+  const agbptr_t song_table = ReadInt32L(&rom[select_song_fn_pos + 40]);
   if (!is_romptr(song_table)) return agbnullptr;
   if (to_offset(song_table) >= rom.size()) return agbnullptr;
 
@@ -186,7 +186,7 @@ int Mp2kDriver::ReadSongCount(std::string_view rom, agbptr_t song_table) {
   int song_count = 0;
   for (agbsize_t offset = song_table_pos; offset <= rom.size() - 8;
        offset += 8) {
-    const agbptr_t song = ReadInt32L(rom.data() + offset);
+    const agbptr_t song = ReadInt32L(&rom[offset]);
     if (!is_romptr(song)) break;
     song_count++;
   }

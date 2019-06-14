@@ -19,12 +19,8 @@ bool BytePattern::Match(std::string_view data, size_type pos) const {
 
 BytePattern::size_type BytePattern::Find(std::string_view data,
                                          size_type pos) const {
-  if (data.size() < pos + size()) return std::string::npos;
-
   for (size_type offset = pos; offset <= data.size() - size(); offset++) {
-    if (Match(data, offset)) {
-      return offset;
-    }
+    if (Match(data, offset)) return offset;
   }
   return std::string::npos;
 }
