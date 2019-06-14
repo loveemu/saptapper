@@ -18,7 +18,7 @@
 
 namespace saptapper {
 
-Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom) const {
+Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom) {
   Mp2kDriverParam param;
   param.set_select_song_fn(FindSelectSongFn(rom));
   param.set_song_table(FindSongTable(rom, param.select_song_fn()));
@@ -30,7 +30,7 @@ Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom) const {
 }
 
 void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
-                                  const Mp2kDriverParam& param) const {
+                                  const Mp2kDriverParam& param) {
   if (!is_romptr(address))
     throw std::invalid_argument("The gsf driver address is not valid.");
   if (!param.ok()) {
@@ -52,6 +52,23 @@ void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
   WriteInt32L(&rom[offset + kVSyncFnOffset], param.vsync_fn() | 1);
 
   WriteInt32L(rom.data(), make_arm_b(0x8000000, address));
+}
+
+int Mp2kDriver::FindIdenticalSong(std::string_view rom, agbptr_t song_table,
+                                   int song) {
+  if (song_table == agbnullptr) return kNoSong;
+
+  agbsize_t start_pos = to_offset(song_table);
+  if (start_pos >= rom.size()) return kNoSong;
+
+  agbsize_t target_pos = start_pos + (8 * song);
+  if (target_pos + 8 >= rom.size()) return kNoSong;
+
+  int current_song = 0;
+  for (agbsize_t pos = start_pos; pos < target_pos; pos += 8, current_song++) {
+    if (std::memcmp(&rom[pos], &rom[target_pos], 8) == 0) return current_song;
+  }
+  return kNoSong;
 }
 
 agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {

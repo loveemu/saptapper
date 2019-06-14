@@ -20,13 +20,14 @@ Syntax: `saptapper {OPTIONS} romfile`
 
 ### Options
 
-|Argument        |Description                                                 |
-|----------------|------------------------------------------------------------|
-|`-h`, `--help`  |Show this help message and exit                             |
-|`--inspect`     |Show the inspection result without saving files and quit    |
-|`-d[directory]` |The output directory (the default is the working directory) |
-|`-o[basename]`  |The output filename (without extension)                     |
-|`romfile`       |The ROM file to be processed                                |
+|Argument                                |Description                                                 |
+|----------------------------------------|------------------------------------------------------------|
+|`-h`, `--help`                          |Show this help message and exit                             |
+|`--inspect`                             |Show the inspection result without saving files and quit    |
+|`-f`, `--force`                         |Save all songs including duplicated ones                    |
+|`-d[directory]`, `--outdir=[directory]` |The output directory (the default is the working directory) |
+|`-o[basename]`                          |The output filename (without extension)                     |
+|`romfile`                               |The ROM file to be processed                                |
 
 Note
 ----

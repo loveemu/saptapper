@@ -12,24 +12,29 @@ namespace saptapper {
 
 class Mp2kDriver {
  public:
-  Mp2kDriver() = default;
+  Mp2kDriver() = delete;
 
-  constexpr agbsize_t gsf_driver_size() const noexcept {
+  static constexpr int kNoSong = -1;
+
+  static constexpr agbsize_t gsf_driver_size() noexcept {
     return sizeof(gsf_driver_block);
   }
 
-  constexpr agbptr_t minigsf_address(agbptr_t gsf_driver_addr) const noexcept {
+  static constexpr agbptr_t minigsf_address(agbptr_t gsf_driver_addr) noexcept {
     return (gsf_driver_addr != agbnullptr)
                ? (gsf_driver_addr + kSongNumberOffset)
                : agbnullptr;
   }
 
-  std::string name() const { return "MusicPlayer2000"; }
+  static std::string name() { return "MusicPlayer2000"; }
 
-  Mp2kDriverParam Inspect(std::string_view rom) const;
+  static Mp2kDriverParam Inspect(std::string_view rom);
 
-  void InstallGsfDriver(std::string& rom, agbptr_t address,
-                        const Mp2kDriverParam& param) const;
+  static void InstallGsfDriver(std::string& rom, agbptr_t address,
+                               const Mp2kDriverParam& param);
+
+  static int FindIdenticalSong(std::string_view rom, agbptr_t song_table,
+                               int song);
 
  private:
   static constexpr agbsize_t kInitFnOffset = 0xd8;

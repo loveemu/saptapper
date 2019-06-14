@@ -19,12 +19,12 @@ class Saptapper {
   static void ConvertToGsfSet(Cartridge& cartridge,
                               const std::filesystem::path& basename,
                               const std::filesystem::path& outdir = "",
-                              const std::string_view& gsfby = "");
+                              const std::string_view& gsfby = "",
+                              bool keep_duplicated = false);
 
-  static void SaveMinigsfFiles(const std::filesystem::path& base_path,
-                               const MinigsfDriverParam& minigsf,
-                               int song_count,
-                               const std::map<std::string, std::string>& tags);
+  static void SaveMinigsfFile(
+      const std::filesystem::path& base_path, const MinigsfDriverParam& minigsf,
+      int song, const std::map<std::string, std::string>& tags = {});
 
   static void Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
                       MinigsfDriverParam& minigsf, agbptr_t& gsf_driver_addr,

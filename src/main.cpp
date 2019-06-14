@@ -27,9 +27,13 @@ int main(int argc, const char** argv) {
         parser, "inspect",
         "Show the inspection result without saving files and quit",
         {"inspect"});
+    args::Flag force_arg(parser, "force",
+                         "Save all songs including duplicated ones",
+                         {'f', "force"});
     args::ValueFlag<std::filesystem::path> outdir_arg(
         parser, "directory",
-        "The output directory (the default is the working directory)", {'d'});
+        "The output directory (the default is the working directory)",
+        {'d', "outdir"});
     args::ValueFlag<std::filesystem::path> basename_arg(
         parser, "basename", "The output filename (without extension)", {'o'});
     args::ValueFlag<std::string> gsfby_arg(
@@ -68,15 +72,19 @@ int main(int argc, const char** argv) {
       const std::filesystem::path basename{
           basename_arg ? args::get(basename_arg) : in_path.stem()};
       const std::filesystem::path outdir{args::get(outdir_arg)};
+
       std::string gsfby{args::get(gsfby_arg)};
       if (gsfby != "Caitsith2") {
-        if (gsfby.empty())
+        if (gsfby.empty()) {
           gsfby = "Saptapper";
-        else
+        } else {
           gsfby.insert(0, "Saptapper, with help of ");
+        }
       }
 
-      Saptapper::ConvertToGsfSet(cartridge, basename, outdir, gsfby);
+      bool keep_duplicated = force_arg;
+      Saptapper::ConvertToGsfSet(cartridge, basename, outdir, gsfby,
+                                 keep_duplicated);
     }
   } catch (std::exception& e) {
     std::cerr << e.what() << std::endl;

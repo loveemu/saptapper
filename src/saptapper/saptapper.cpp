@@ -21,14 +21,14 @@ namespace saptapper {
 void Saptapper::ConvertToGsfSet(Cartridge& cartridge,
                                 const std::filesystem::path& basename,
                                 const std::filesystem::path& outdir,
-                                const std::string_view& gsfby) {
+                                const std::string_view& gsfby,
+                                bool keep_duplicated) {
   Mp2kDriverParam param;
   MinigsfDriverParam minigsf;
   agbptr_t gsf_driver_addr = agbnullptr;
   Inspect(cartridge, param, minigsf, gsf_driver_addr, true);
 
-  Mp2kDriver driver;
-  driver.InstallGsfDriver(cartridge.rom(), gsf_driver_addr, param);
+  Mp2kDriver::InstallGsfDriver(cartridge.rom(), gsf_driver_addr, param);
 
   std::filesystem::path base_path{outdir};
   base_path /= basename;
@@ -44,23 +44,30 @@ void Saptapper::ConvertToGsfSet(Cartridge& cartridge,
   const std::string lib{gsflib_path.filename().string()};
   std::map<std::string, std::string> minigsf_tags{{"_lib", lib}};
   if (!gsfby.empty()) minigsf_tags["gsfby"] = gsfby;
-  SaveMinigsfFiles(base_path, minigsf, param.song_count(), minigsf_tags);
+
+  for (int song = 0; song < param.song_count(); song++) {
+    if (!keep_duplicated) {
+      int origin = Mp2kDriver::FindIdenticalSong(cartridge.rom(),
+                                                 param.song_table(), song);
+      if (origin != Mp2kDriver::kNoSong) continue;
+    }
+
+    SaveMinigsfFile(base_path, minigsf, song, minigsf_tags);
+  }
 }
 
-void Saptapper::SaveMinigsfFiles(
+void Saptapper::SaveMinigsfFile(
     const std::filesystem::path& base_path, const MinigsfDriverParam& minigsf,
-    int song_count, const std::map<std::string, std::string>& tags) {
-  for (int song = 0; song < song_count; song++) {
-    std::ostringstream songid;
-    songid << std::setfill('0') << std::setw(4) << song;
+    int song, const std::map<std::string, std::string>& tags) {
+  std::ostringstream songid;
+  songid << std::setfill('0') << std::setw(4) << song;
 
-    std::filesystem::path minigsf_path{base_path};
-    minigsf_path += "-";
-    minigsf_path += songid.str();
-    minigsf_path += ".minigsf";
+  std::filesystem::path minigsf_path{base_path};
+  minigsf_path += "-";
+  minigsf_path += songid.str();
+  minigsf_path += ".minigsf";
 
-    GsfWriter::SaveMinigsfToFile(minigsf_path, minigsf, song, tags);
-  }
+  GsfWriter::SaveMinigsfToFile(minigsf_path, minigsf, song, tags);
 }
 
 void Saptapper::Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
@@ -69,9 +76,7 @@ void Saptapper::Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
   if (gsf_driver_addr != agbnullptr && !is_romptr(gsf_driver_addr))
     throw std::invalid_argument("The gsf driver address is not valid.");
 
-  Mp2kDriver driver;
-
-  param = driver.Inspect(cartridge.rom());
+  param = Mp2kDriver::Inspect(cartridge.rom());
   if (throw_if_missing && !param.ok()) {
     std::ostringstream message;
     message << "Identification of MusicPlayer2000 driver is incomplete."
@@ -81,15 +86,16 @@ void Saptapper::Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
     throw std::runtime_error(message.str());
   }
 
-  gsf_driver_addr = FindFreeSpace(cartridge.rom(), driver.gsf_driver_size());
+  gsf_driver_addr =
+      FindFreeSpace(cartridge.rom(), Mp2kDriver::gsf_driver_size());
   if (throw_if_missing && gsf_driver_addr == agbnullptr) {
     std::ostringstream message;
     message << "Unable to find the free space for gsf driver block ("
-            << driver.gsf_driver_size() << " bytes required).";
+            << Mp2kDriver::gsf_driver_size() << " bytes required).";
     throw std::runtime_error(message.str());
   }
 
-  minigsf.set_address(driver.minigsf_address(gsf_driver_addr));
+  minigsf.set_address(Mp2kDriver::minigsf_address(gsf_driver_addr));
   minigsf.set_size(GetMinigsfSize(param.song_count()));
 }
 
