@@ -27,7 +27,7 @@ after_build:
   - ps: $env:my_version = "$env:gitrev"
   - set package_name=saptapper-%my_version%-%arch%
   - copy "build\%config%\saptapper.exe" .
-  - 7z a %package_name%.zip saptapper.exe optimize.bat README.md LICENSE.txt
+  - 7z a %package_name%.zip saptapper.exe README.md LICENSE.txt
 
 artifacts:
   - path: $(package_name).zip
