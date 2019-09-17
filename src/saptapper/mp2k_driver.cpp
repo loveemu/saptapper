@@ -76,8 +76,8 @@ agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {
 
   using namespace std::literals::string_view_literals;
   std::array patterns = {
-      "\x70\xb5"sv,  // push {r4-r6,lr}
-      "\xf0\xb5"sv,  // push {r4-r7,lr}};
+      "\x70\xb5\x14\x48"sv,  // push {r4-r6,lr}; ldr r0, =(SoundMainRAM+1)
+      "\xf0\xb5\x47\x46"sv,  // push {r4-r7,lr}; mov r7, r8
   };
   return find_backwards(rom, patterns, to_offset(main_fn), 0x100);
 }  // namespace saptapper
