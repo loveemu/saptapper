@@ -37,8 +37,8 @@ void Saptapper::ConvertToGsfSet(Cartridge& cartridge,
   std::filesystem::path gsflib_path{base_path};
   gsflib_path += ".gsflib";
 
-  const agbptr_t entrypoint = 0x8000000;
-  const GsfHeader gsf_header{entrypoint, entrypoint, cartridge.size()};
+  const GsfHeader gsf_header{cartridge.entrypoint(), cartridge.entrypoint(),
+                             cartridge.size()};
   GsfWriter::SaveToFile(gsflib_path, gsf_header, cartridge.rom());
 
   const std::string lib{gsflib_path.filename().string()};
@@ -73,10 +73,10 @@ void Saptapper::SaveMinigsfFile(
 void Saptapper::Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
                         MinigsfDriverParam& minigsf, agbptr_t& gsf_driver_addr,
                         bool throw_if_missing) {
-  if (gsf_driver_addr != agbnullptr && !is_romptr(gsf_driver_addr))
+  if (gsf_driver_addr != agbnullptr && is_romptr(gsf_driver_addr, cartridge.entrypoint()))
     throw std::invalid_argument("The gsf driver address is not valid.");
 
-  param = Mp2kDriver::Inspect(cartridge.rom());
+  param = Mp2kDriver::Inspect(cartridge.rom(), cartridge.entrypoint());
   if (throw_if_missing && !param.ok()) {
     std::ostringstream message;
     message << "Identification of MusicPlayer2000 driver is incomplete."
@@ -87,8 +87,7 @@ void Saptapper::Inspect(const Cartridge& cartridge, Mp2kDriverParam& param,
   }
 
   if (gsf_driver_addr == agbnullptr)
-    gsf_driver_addr =
-        FindFreeSpace(cartridge.rom(), Mp2kDriver::gsf_driver_size());
+    gsf_driver_addr = FindFreeSpace(cartridge, Mp2kDriver::gsf_driver_size());
 
   if (throw_if_missing && gsf_driver_addr == agbnullptr) {
     std::ostringstream message;
@@ -113,8 +112,9 @@ void Saptapper::PrintParam(const Mp2kDriverParam& param,
   (void)minigsf.WriteAsTable(std::cout);
 }
 
-agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size,
+agbptr_t Saptapper::FindFreeSpace(const Cartridge& cartridge, agbsize_t size,
                                   char filler, bool largest) {
+  std::string_view rom{cartridge.rom()};
   agbptr_t space = agbnullptr;
   agbsize_t space_size = 0;
   for (agbsize_t offset = 0; offset < rom.size(); offset += 4) {
@@ -125,7 +125,7 @@ agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size,
       const agbsize_t candidate_size = end_pos - offset;
       if (candidate_size >= size) {
         if (candidate_size > space_size) {
-          space = to_romptr(offset);
+          space = to_agbptr(offset, cartridge.entrypoint());
           space_size = candidate_size;
           if (!largest) return space;
         }
@@ -137,11 +137,11 @@ agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size,
   return space;
 }
 
-agbptr_t Saptapper::FindFreeSpace(std::string_view rom, agbsize_t size) {
+agbptr_t Saptapper::FindFreeSpace(const Cartridge& cartridge, agbsize_t size) {
   constexpr bool largest = false;
-  agbptr_t addr = FindFreeSpace(rom, size, '\xff', largest);
+  agbptr_t addr = FindFreeSpace(cartridge, size, '\xff', largest);
   if (addr == agbnullptr) {
-    addr = FindFreeSpace(rom, size, 0, largest);
+    addr = FindFreeSpace(cartridge, size, 0, largest);
   }
   return addr;
 }

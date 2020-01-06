@@ -11,7 +11,17 @@
 namespace saptapper {
 
 Cartridge Cartridge::LoadFromFile(const std::filesystem::path& path) {
+  const std::string ext{path.extension().string()};
+  const agbptr_t entrypoint =
+      (ext == ".mb" || ext == ".MB") ? kAgbEwramBase : kAgbRomBase;
+  return LoadFromFile(path, entrypoint);
+}
+
+Cartridge Cartridge::LoadFromFile(const std::filesystem::path& path, agbptr_t entrypoint) {
   Cartridge cartridge;
+
+  if (entrypoint != kAgbRomBase && entrypoint != kAgbEwramBase)
+    throw std::range_error("Unexpected entrypoint address.");
 
   const auto size = file_size(path);
   ValidateSize(size);
@@ -25,6 +35,7 @@ Cartridge Cartridge::LoadFromFile(const std::filesystem::path& path) {
   stream.close();
 
   cartridge.rom_ = std::move(rom);
+  cartridge.entrypoint_ = entrypoint;
   return cartridge;
 }
 

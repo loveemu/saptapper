@@ -22,13 +22,16 @@ class Cartridge {
   std::string& rom() { return rom_; }
   const std::string& rom() const { return rom_; }
   size_type size() const { return static_cast<agbsize_t>(rom_.size()); }
+  agbptr_t entrypoint() const { return entrypoint_; }
   std::string game_title() const { return rom_.substr(0xa0, 12); }
   std::string game_code() const { return rom_.substr(0xac, 4); }
 
   static Cartridge LoadFromFile(const std::filesystem::path& path);
+  static Cartridge LoadFromFile(const std::filesystem::path& path, agbptr_t entrypoint);
 
  private:
   std::string rom_;
+  agbptr_t entrypoint_;
 
   static void ValidateSize(std::uintmax_t size);
 };

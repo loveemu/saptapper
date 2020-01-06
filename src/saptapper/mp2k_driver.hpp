@@ -28,7 +28,7 @@ class Mp2kDriver {
 
   static std::string name() { return "MusicPlayer2000"; }
 
-  static Mp2kDriverParam Inspect(std::string_view rom);
+  static Mp2kDriverParam Inspect(std::string_view rom, agbptr_t entrypoint);
 
   static void InstallGsfDriver(std::string& rom, agbptr_t address,
                                const Mp2kDriverParam& param);
@@ -66,12 +66,17 @@ class Mp2kDriver {
       0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2B, 0x00, 0xD0,
       0x18, 0x47, 0x70, 0x47};
 
-  static agbptr_t FindInitFn(std::string_view rom, agbptr_t main_fn);
-  static agbptr_t FindMainFn(std::string_view rom, agbptr_t select_song_fn);
-  static agbptr_t FindVSyncFn(std::string_view rom, agbptr_t init_fn);
-  static agbptr_t FindSelectSongFn(std::string_view rom);
-  static agbptr_t FindSongTable(std::string_view rom, agbptr_t select_song_fn);
-  static int ReadSongCount(std::string_view rom, agbptr_t song_table);
+  static agbptr_t FindInitFn(std::string_view rom, agbptr_t main_fn,
+                             agbptr_t entrypoint);
+  static agbptr_t FindMainFn(std::string_view rom, agbptr_t select_song_fn,
+                             agbptr_t entrypoint);
+  static agbptr_t FindVSyncFn(std::string_view rom, agbptr_t init_fn,
+                              agbptr_t entrypoint);
+  static agbptr_t FindSelectSongFn(std::string_view rom, agbptr_t entrypoint);
+  static agbptr_t FindSongTable(std::string_view rom, agbptr_t select_song_fn,
+                                agbptr_t entrypoint);
+  static int ReadSongCount(std::string_view rom, agbptr_t song_table,
+                           agbptr_t entrypoint);
 };
 
 }  // namespace saptapper

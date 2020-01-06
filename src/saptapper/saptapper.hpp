@@ -34,8 +34,8 @@ class Saptapper {
                          const MinigsfDriverParam& minigsf);
 
  private:
-  static agbptr_t FindFreeSpace(std::string_view rom, agbsize_t size);
-  static agbptr_t FindFreeSpace(std::string_view rom, agbsize_t size,
+  static agbptr_t FindFreeSpace(const Cartridge& cartridge, agbsize_t size);
+  static agbptr_t FindFreeSpace(const Cartridge& cartridge, agbsize_t size,
                                 char filler, bool largest);
 
   static constexpr agbsize_t GetMinigsfSize(int song_count) {

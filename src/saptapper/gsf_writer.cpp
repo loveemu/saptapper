@@ -43,8 +43,7 @@ void GsfWriter::SaveMinigsfToFile(
 void GsfWriter::SaveMinigsfToStream(
     std::ostream& out, const MinigsfDriverParam& param, std::uint32_t song,
     const std::map<std::string, std::string>& tags) {
-  const agbptr_t entrypoint =
-      is_romptr(param.address()) ? 0x8000000 : param.address() & 0xff000000;
+  const agbptr_t entrypoint = remove_offset(param.address());
   const GsfHeader gsf_header{entrypoint, param.address(), param.size()};
 
   char rom_data[4];

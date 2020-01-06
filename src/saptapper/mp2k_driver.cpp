@@ -18,21 +18,19 @@
 
 namespace saptapper {
 
-Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom) {
+Mp2kDriverParam Mp2kDriver::Inspect(std::string_view rom, agbptr_t entrypoint) {
   Mp2kDriverParam param;
-  param.set_select_song_fn(FindSelectSongFn(rom));
-  param.set_song_table(FindSongTable(rom, param.select_song_fn()));
-  param.set_main_fn(FindMainFn(rom, param.select_song_fn()));
-  param.set_init_fn(FindInitFn(rom, param.main_fn()));
-  param.set_vsync_fn(FindVSyncFn(rom, param.init_fn()));
-  param.set_song_count(ReadSongCount(rom, param.song_table()));
+  param.set_select_song_fn(FindSelectSongFn(rom, entrypoint));
+  param.set_song_table(FindSongTable(rom, param.select_song_fn(), entrypoint));
+  param.set_main_fn(FindMainFn(rom, param.select_song_fn(), entrypoint));
+  param.set_init_fn(FindInitFn(rom, param.main_fn(), entrypoint));
+  param.set_vsync_fn(FindVSyncFn(rom, param.init_fn(), entrypoint));
+  param.set_song_count(ReadSongCount(rom, param.song_table(), entrypoint));
   return param;
 }
 
 void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
                                   const Mp2kDriverParam& param) {
-  if (!is_romptr(address))
-    throw std::invalid_argument("The gsf driver address is not valid.");
   if (!param.ok()) {
     std::ostringstream message;
     message << "Identification of MusicPlayer2000 driver is incomplete."
@@ -51,7 +49,14 @@ void Mp2kDriver::InstallGsfDriver(std::string& rom, agbptr_t address,
   WriteInt32L(&rom[offset + kMainFnOffset], param.main_fn() | 1);
   WriteInt32L(&rom[offset + kVSyncFnOffset], param.vsync_fn() | 1);
 
-  WriteInt32L(rom.data(), make_arm_b(0x8000000, address));
+  agbptr_t entrypoint = remove_offset(address);
+  if (entrypoint == kAgbEwramBase) {
+    WriteInt32L(rom.data() + kAgbRamEntrypoint,
+                make_arm_b(entrypoint + kAgbRamEntrypoint, address));
+  } else {
+    WriteInt32L(rom.data() + kAgbRomEntrypoint,
+                make_arm_b(entrypoint + kAgbRomEntrypoint, address));
+  }
 }
 
 int Mp2kDriver::FindIdenticalSong(std::string_view rom, agbptr_t song_table,
@@ -71,7 +76,7 @@ int Mp2kDriver::FindIdenticalSong(std::string_view rom, agbptr_t song_table,
   return kNoSong;
 }
 
-agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {
+agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn, agbptr_t entrypoint) {
   if (main_fn == agbnullptr) return agbnullptr;
 
   using namespace std::literals::string_view_literals;
@@ -79,18 +84,20 @@ agbptr_t Mp2kDriver::FindInitFn(std::string_view rom, agbptr_t main_fn) {
       "\x70\xb5\x14\x48"sv,  // push {r4-r6,lr}; ldr r0, =(SoundMainRAM+1)
       "\xf0\xb5\x47\x46"sv,  // push {r4-r7,lr}; mov r7, r8
   };
-  return find_backwards(rom, patterns, to_offset(main_fn), 0x100);
-}  // namespace saptapper
+  return to_agbptr(entrypoint, find_backwards(rom, patterns, to_offset(main_fn), 0x100));
+}
 
-agbptr_t Mp2kDriver::FindMainFn(std::string_view rom, agbptr_t select_song_fn) {
+agbptr_t Mp2kDriver::FindMainFn(std::string_view rom, agbptr_t select_song_fn,
+                                agbptr_t entrypoint) {
   if (select_song_fn == agbnullptr) return agbnullptr;
 
   using namespace std::literals::string_view_literals;
   std::array patterns{"\x00\xb5"sv};  // push lr
-  return find_backwards(rom, patterns, to_offset(select_song_fn), 0x20);
+  return to_agbptr(entrypoint, find_backwards(rom, patterns, to_offset(select_song_fn), 0x20));
 }
 
-agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
+agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn,
+                                 agbptr_t entrypoint) {
   if (init_fn == agbnullptr) return agbnullptr;
 
   using namespace std::literals::string_view_literals;
@@ -135,7 +142,7 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
         continue;
       }
 
-      return to_romptr(offset);
+      return to_agbptr(entrypoint, offset);
     }
   }
 
@@ -147,36 +154,39 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
       init_fn_pos + length, static_cast<agbsize_t>(rom.size()));
   for (agbsize_t offset = min_pos2; offset < max_pos2; offset += align) {
     if (pattern2.Match(rom, offset))
-      return to_romptr(offset);
+      return to_agbptr(entrypoint, offset);
   }
 
   return agbnullptr;
 }
 
-agbptr_t Mp2kDriver::FindSelectSongFn(std::string_view rom) {
+agbptr_t Mp2kDriver::FindSelectSongFn(std::string_view rom,
+                                      agbptr_t entrypoint) {
   using namespace std::literals::string_view_literals;
   const std::string_view pattern{
       "\x00\xb5\x00\x04\x07\x4a\x08\x49\x40\x0b"sv
       "\x40\x18\x83\x88\x59\x00\xc9\x18\x89\x00"sv
       "\x89\x18\x0a\x68\x01\x68\x10\x1c\x00\xf0"sv};
-  return find_loose(rom, pattern, 8);
+  return to_agbptr(entrypoint, find_loose(rom, pattern, 8));
 }
 
 agbptr_t Mp2kDriver::FindSongTable(std::string_view rom,
-                                   agbptr_t select_song_fn) {
+                                   agbptr_t select_song_fn,
+                                   agbptr_t entrypoint) {
   if (select_song_fn == agbnullptr) return agbnullptr;
 
   const agbsize_t select_song_fn_pos = to_offset(select_song_fn);
   if (select_song_fn_pos + 40 + 4 > rom.size()) return agbnullptr;
 
   const agbptr_t song_table = ReadInt32L(&rom[select_song_fn_pos + 40]);
-  if (!is_romptr(song_table)) return agbnullptr;
+  if (!is_romptr(song_table, entrypoint)) return agbnullptr;
   if (to_offset(song_table) >= rom.size()) return agbnullptr;
 
   return song_table;
 }
 
-int Mp2kDriver::ReadSongCount(std::string_view rom, agbptr_t song_table) {
+int Mp2kDriver::ReadSongCount(std::string_view rom, agbptr_t song_table,
+                              agbptr_t entrypoint) {
   if (song_table == agbnullptr) return 0;
 
   const agbsize_t song_table_pos = to_offset(song_table);
@@ -187,7 +197,7 @@ int Mp2kDriver::ReadSongCount(std::string_view rom, agbptr_t song_table) {
   for (agbsize_t offset = song_table_pos; offset <= rom.size() - 8;
        offset += 8) {
     const agbptr_t song = ReadInt32L(&rom[offset]);
-    if (!is_romptr(song)) break;
+    if (!is_romptr(song, entrypoint)) break;
     song_count++;
   }
   return song_count;

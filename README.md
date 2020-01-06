@@ -18,6 +18,8 @@ Usage
 
 Syntax: `saptapper {OPTIONS} romfile`
 
+If the extension of the input file is .mb or .MB, the input will be treated as a multi-boot ROM.
+
 ### Options
 
 |Argument                                |Description                                                 |
