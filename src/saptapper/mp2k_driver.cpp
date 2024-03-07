@@ -125,7 +125,7 @@ agbptr_t Mp2kDriver::FindVSyncFn(std::string_view rom, agbptr_t init_fn) {
   //
   // Search backwards from m4aSoundInit function.
   const agbsize_t max_pos = init_fn_pos - align;
-  const agbsize_t min_pos = init_fn_pos - length;
+  const agbsize_t min_pos = init_fn_pos - std::min<agbsize_t>(length, init_fn_pos);
   for (agbsize_t offset = max_pos; offset >= min_pos; offset -= align) {
     if (pattern.Match(rom, offset)) {
       // Momotarou Matsuri, Puyo Pop Fever:
